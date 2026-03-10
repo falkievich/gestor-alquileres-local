@@ -1,0 +1,42 @@
+## ── Python ──────────────────────────────────────────────────────
+# Entornos virtuales
+env/
+.venv/
+backend/.venv/
+
+# Caché de bytecode (cubre TODO el repo, sin redundar rutas específicas)
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Variables de entorno
+.env
+.env.*
+
+# Distribución / build
+*.egg-info/
+dist/
+build/
+
+## ── Frontend ─────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+## ── Base de datos ────────────────────────────────────────────────
+# Ignorar archivos sqlite pero conservar las carpetas (con .gitkeep)
+base_de_datos/*.sqlite
+backups/*.sqlite
+
+## ── Sistema operativo ────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+## ── IDEs / editores ──────────────────────────────────────────────
+.idea/
+*.suo
+*.user
+*.swp
+*.swo

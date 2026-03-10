@@ -1,0 +1,13 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Backend: Iniciar servidor",
+			"type": "shell",
+			"command": ".venv\\Scripts\\uvicorn.exe app.main:app --reload --port 8000",
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}
