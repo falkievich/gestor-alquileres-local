@@ -178,7 +178,7 @@ export default function Contratos() {
             {c.estado === 'activo' && (
               <>
                 <button onClick={() => abrirEditar(c)} className="p-1.5 hover:bg-gray-100 rounded" title="Editar">
-                  <Pencil size={14} className="text-gray-500" />
+                  <Pencil size={14} className="text-white" />
                 </button>
                 <button onClick={() => cerrar(c)} className="p-1.5 hover:bg-gray-100 rounded" title="Cerrar contrato">
                   <Lock size={14} className="text-orange-500" />
@@ -392,7 +392,7 @@ export default function Contratos() {
             </div>
 
             <div className="flex gap-2 justify-end mt-5">
-              <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-100">Cancelar</button>
+              <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-100 text-white">Cancelar</button>
               <button onClick={guardar} disabled={uploading} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
                 {uploading ? 'Subiendo...' : 'Guardar'}
               </button>

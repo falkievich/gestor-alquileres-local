@@ -91,19 +91,19 @@ export default function Departamentos() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {departamentos.map(dep => (
           <div key={dep.id_departamentos} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-            <div className="flex items-start justify-between">
-              <div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-lg font-bold text-gray-800">{dep.piso} — {dep.codigo}</span>
+                  <span className="text-lg font-bold text-gray-800 truncate">{dep.piso} — {dep.codigo}</span>
                 </div>
                 {dep.direccion && <p className="text-xs text-gray-500 mt-0.5">{dep.direccion}</p>}
                 <span className={`inline-block mt-2 text-xs font-semibold px-2 py-0.5 rounded-full ${dep.esta_ocupado ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>
                   {dep.esta_ocupado ? 'Ocupado' : 'Libre'}
                 </span>
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1 shrink-0">
                 <button onClick={() => abrirEditar(dep)} className="p-1.5 hover:bg-gray-100 rounded">
-                  <Pencil size={15} className="text-gray-500" />
+                  <Pencil size={15} className="text-white" />
                 </button>
                 <button onClick={() => eliminar(dep)} className="p-1.5 hover:bg-gray-100 rounded">
                   <Trash2 size={15} className="text-red-400" />
@@ -113,15 +113,15 @@ export default function Departamentos() {
             <div className="flex gap-2 mt-3">
               <button
                 onClick={() => abrirHistorial(dep)}
-                className="flex-1 text-xs py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-1"
+                className="flex-1 text-xs py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-1 text-white"
               >
                 <History size={13} /> Historial
               </button>
               <button
                 onClick={() => abrirPagos(dep)}
-                className="flex-1 text-xs py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-1"
+                className="flex-1 text-xs py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-1 text-white"
               >
-                💳 Pagos
+                Pagos
               </button>
             </div>
           </div>
@@ -173,7 +173,7 @@ export default function Departamentos() {
               </div>
             </div>
             <div className="flex gap-2 justify-end mt-5">
-              <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-100">Cancelar</button>
+              <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-100 text-white">Cancelar</button>
               <button onClick={guardar} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Guardar</button>
             </div>
           </div>

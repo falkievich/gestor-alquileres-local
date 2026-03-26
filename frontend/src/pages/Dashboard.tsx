@@ -79,7 +79,7 @@ export default function Dashboard() {
         <div className="flex gap-2 flex-wrap justify-end">
           <button
             onClick={() => setShowPagados(!showPagados)}
-            className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100 transition"
+            className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100 transition text-white"
           >
             {showPagados ? <EyeOff size={16} /> : <Eye size={16} />}
             {showPagados ? 'Ocultar pagados' : 'Mostrar pagados'}
@@ -87,7 +87,7 @@ export default function Dashboard() {
           <button onClick={handleImprimir} className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition">
             <Printer size={16} /> Imprimir
           </button>
-          <button onClick={cargar} className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100 transition">
+          <button onClick={cargar} className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100 transition text-white">
             <RefreshCw size={16} /> Actualizar
           </button>
           <button onClick={crearBackup} className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
@@ -219,7 +219,7 @@ export default function Dashboard() {
                               nota_override: reg.nota_override ?? '',
                             })
                           }}
-                          className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-100 transition"
+                          className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-100 transition text-white"
                         >
                           Ajuste
                         </button>
@@ -285,7 +285,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex gap-2 justify-end mt-5">
-              <button onClick={() => setOverrideModal(null)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-100">
+              <button onClick={() => setOverrideModal(null)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-100 text-white">
                 Cancelar
               </button>
               <button onClick={guardarOverride} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">

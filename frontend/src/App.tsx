@@ -43,7 +43,7 @@ function App() {
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
                       : 'text-slate-300 hover:bg-slate-700 hover:text-white'
                   }`
                 }

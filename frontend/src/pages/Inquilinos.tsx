@@ -102,17 +102,17 @@ export default function Inquilinos() {
                 <td className="px-4 py-3">
                   <div className="flex gap-1 justify-center">
                     <button onClick={() => abrirEditar(inq)} className="p-1.5 hover:bg-gray-100 rounded" title="Editar">
-                      <Pencil size={14} className="text-gray-500" />
+                      <Pencil size={14} className="text-white" />
                     </button>
                     <button
                       onClick={() => abrirContratos(inq)}
-                      className="text-xs px-2 py-1 border border-gray-200 rounded hover:bg-gray-50"
+                      className="text-xs px-2 py-1 border border-gray-200 rounded hover:bg-gray-50 text-white"
                     >
                       Contratos
                     </button>
                     <button
                       onClick={() => abrirPagos(inq)}
-                      className="text-xs px-2 py-1 border border-gray-200 rounded hover:bg-gray-50"
+                      className="text-xs px-2 py-1 border border-gray-200 rounded hover:bg-gray-50 text-white"
                     >
                       Pagos
                     </button>
@@ -171,7 +171,7 @@ export default function Inquilinos() {
               </div>
             </div>
             <div className="flex gap-2 justify-end mt-5">
-              <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-100">Cancelar</button>
+              <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-100 text-white">Cancelar</button>
               <button onClick={guardar} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Guardar</button>
             </div>
           </div>
