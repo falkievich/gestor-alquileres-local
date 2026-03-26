@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import api from '../lib/api'
 import type { AumentoItem } from '../lib/types'
-import { MESES, formatMoneda } from '../lib/types'
+import { MESES, formatMoneda, formatFecha } from '../lib/types'
 import { TrendingUp, AlertTriangle, XCircle } from 'lucide-react'
 
 export default function Aumentos() {
@@ -59,7 +59,7 @@ export default function Aumentos() {
                       )}
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
-                      Vence: {item.contrato.fecha_fin} · Aumento: {item.contrato.porcentaje_aumento}% cada {item.contrato.periodicidad_aumento_meses} meses
+                      Vence: {formatFecha(item.contrato.fecha_fin)} · Aumento: {item.contrato.porcentaje_aumento}% cada {item.contrato.periodicidad_aumento_meses} meses
                     </p>
                   </div>
                   <div className="flex items-center gap-2 text-blue-600">

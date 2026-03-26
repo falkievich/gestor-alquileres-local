@@ -93,8 +93,15 @@ export default function Servicios() {
                 const v = valores[idReg] ?? { agua: '', luz: '' }
                 return (
                   <tr key={idReg} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-800">
-                      {item.departamento?.piso} {item.departamento?.codigo}
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-gray-800">
+                        {item.departamento?.piso} {item.departamento?.codigo}
+                      </div>
+                      {item.departamento?.direccion && (
+                        <div className="text-xs text-gray-400 truncate max-w-[180px]" title={item.departamento.direccion}>
+                          {item.departamento.direccion}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-gray-700">{item.inquilino?.nombre_apellido}</td>
                     <td className="px-4 py-3 text-center">

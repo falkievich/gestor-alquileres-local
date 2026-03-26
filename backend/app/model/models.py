@@ -94,6 +94,26 @@ class ContratoUpdate(SQLModel):
     cobra_luz: Optional[bool] = None
 
 
+class ContratoRead(SQLModel):
+    """Modelo de respuesta: igual que Contrato pero SIN archivo_blob."""
+    id_contratos: Optional[int] = None
+    id_departamentos: int
+    id_inquilinos: int
+    fecha_inicio: date
+    fecha_fin: date
+    estado: str
+    alquiler_base_actual: int
+    expensa_base_actual: Optional[int] = None
+    porcentaje_aumento: float
+    periodicidad_aumento_meses: int
+    ultimo_aumento_anio: Optional[int] = None
+    ultimo_aumento_mes: Optional[int] = None
+    cobra_expensa: bool
+    cobra_agua: bool
+    cobra_luz: bool
+    archivo_nombre: Optional[str] = None
+
+
 class RegistroMensual(SQLModel, table=True):
     __tablename__ = "registros_mensuales"
 

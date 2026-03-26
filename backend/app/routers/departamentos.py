@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 from typing import List
 from app.db import get_session
-from app.model.models import Departamento, DepartamentoCreate, DepartamentoUpdate
+from app.model.models import Departamento, DepartamentoCreate, DepartamentoUpdate, ContratoRead
 from app.crud import departamentos as crud
 from app.crud import contratos as crud_contratos
 from app.crud import registros as crud_registros
@@ -63,7 +63,7 @@ def historial_departamento(id: int, session: Session = Depends(get_session)):
     for c in contratos:
         inq = session.get(Inquilino, c.id_inquilinos)
         resultado.append({
-            "contrato": c,
+            "contrato": ContratoRead.model_validate(c),
             "inquilino": inq
         })
     return resultado

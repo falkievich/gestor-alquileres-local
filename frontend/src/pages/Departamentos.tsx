@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import api from '../lib/api'
 import type { Departamento, DepartamentoCreate, HistorialItem, PagoItem } from '../lib/types'
-import { PISOS, MESES, formatMoneda } from '../lib/types'
+import { PISOS, MESES, formatMoneda, formatFecha } from '../lib/types'
 import { Plus, Pencil, Trash2, History, X } from 'lucide-react'
 
 type Modal = 'crear' | 'editar' | 'historial' | 'pagos' | null
@@ -103,7 +103,7 @@ export default function Departamentos() {
               </div>
               <div className="flex gap-1 shrink-0">
                 <button onClick={() => abrirEditar(dep)} className="p-1.5 hover:bg-gray-100 rounded">
-                  <Pencil size={15} className="text-white" />
+                  <Pencil size={15} className="text-gray-500" />
                 </button>
                 <button onClick={() => eliminar(dep)} className="p-1.5 hover:bg-gray-100 rounded">
                   <Trash2 size={15} className="text-red-400" />
@@ -113,13 +113,13 @@ export default function Departamentos() {
             <div className="flex gap-2 mt-3">
               <button
                 onClick={() => abrirHistorial(dep)}
-                className="flex-1 text-xs py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-1 text-white"
+                className="flex-1 text-xs py-1.5 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-1"
               >
                 <History size={13} /> Historial
               </button>
               <button
                 onClick={() => abrirPagos(dep)}
-                className="flex-1 text-xs py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-1 text-white"
+                className="flex-1 text-xs py-1.5 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-1"
               >
                 Pagos
               </button>
@@ -173,7 +173,7 @@ export default function Departamentos() {
               </div>
             </div>
             <div className="flex gap-2 justify-end mt-5">
-              <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-100 text-white">Cancelar</button>
+              <button onClick={() => setModal(null)} className="px-4 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100">Cancelar</button>
               <button onClick={guardar} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Guardar</button>
             </div>
           </div>
@@ -204,8 +204,8 @@ export default function Departamentos() {
                   {historial.map(h => (
                     <tr key={h.contrato.id_contratos}>
                       <td className="px-3 py-2">{h.inquilino?.nombre_apellido}</td>
-                      <td className="px-3 py-2">{h.contrato.fecha_inicio}</td>
-                      <td className="px-3 py-2">{h.contrato.fecha_fin}</td>
+                      <td className="px-3 py-2">{formatFecha(h.contrato.fecha_inicio)}</td>
+                      <td className="px-3 py-2">{formatFecha(h.contrato.fecha_fin)}</td>
                       <td className="px-3 py-2">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${h.contrato.estado === 'activo' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                           {h.contrato.estado}
@@ -235,7 +235,7 @@ export default function Departamentos() {
                 onChange={e => setFiltroAnio(e.target.value)}
               >
                 <option value="">Todos los años</option>
-                {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+                {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <option key={y} value={y}>{y}</option>)}
               </select>
               <select
                 className="border rounded-lg px-3 py-2 text-sm"

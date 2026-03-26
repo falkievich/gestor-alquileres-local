@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 from typing import List
 from app.db import get_session
-from app.model.models import Inquilino, InquilinoCreate, InquilinoUpdate
+from app.model.models import Inquilino, InquilinoCreate, InquilinoUpdate, ContratoRead
 from app.crud import inquilinos as crud
 
 router = APIRouter(prefix="/inquilinos", tags=["inquilinos"])
@@ -54,7 +54,7 @@ def contratos_inquilino(id: int, session: Session = Depends(get_session)):
     resultado = []
     for c in contratos:
         dep = session.get(Departamento, c.id_departamentos)
-        resultado.append({"contrato": c, "departamento": dep})
+        resultado.append({"contrato": ContratoRead.model_validate(c), "departamento": dep})
     return resultado
 
 

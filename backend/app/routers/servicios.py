@@ -8,7 +8,7 @@ from app.service.mes_service import (
     calcular_estado_servicios,
     calcular_total,
 )
-from app.model.models import Contrato, RegistroMensual
+from app.model.models import Contrato, ContratoRead, RegistroMensual
 from typing import Optional
 
 router = APIRouter(prefix="/servicios", tags=["servicios"])
@@ -37,7 +37,7 @@ def listar_pendientes(session: Session = Depends(get_session)):
         dep = session.get(Departamento, contrato.id_departamentos)
         inq = session.get(Inquilino, contrato.id_inquilinos)
         resultado.append({
-            "contrato": contrato,
+            "contrato": ContratoRead.model_validate(contrato),
             "registro": registro,
             "departamento": dep,
             "inquilino": inq,

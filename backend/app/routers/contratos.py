@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 from typing import List, Optional
 from datetime import date
 from app.db import get_session
-from app.model.models import Contrato, ContratoCreate, ContratoUpdate, Departamento, Inquilino
+from app.model.models import Contrato, ContratoCreate, ContratoUpdate, ContratoRead, Departamento, Inquilino
 from app.crud import contratos as crud
 
 router = APIRouter(prefix="/contratos", tags=["contratos"])
@@ -16,7 +16,7 @@ ALLOWED_CONTENT_TYPES = {
 }
 
 
-@router.get("/", response_model=List[Contrato])
+@router.get("/", response_model=List[ContratoRead])
 def listar_contratos(
     id_inquilinos: Optional[int] = None,
     id_departamentos: Optional[int] = None,
@@ -45,7 +45,7 @@ def listar_contratos(
     return session.exec(query).all()
 
 
-@router.get("/{id}", response_model=Contrato)
+@router.get("/{id}", response_model=ContratoRead)
 def obtener_contrato(id: int, session: Session = Depends(get_session)):
     c = crud.get_contrato(session, id)
     if not c:
@@ -53,12 +53,12 @@ def obtener_contrato(id: int, session: Session = Depends(get_session)):
     return c
 
 
-@router.post("/", response_model=Contrato, status_code=201)
+@router.post("/", response_model=ContratoRead, status_code=201)
 def crear_contrato(data: ContratoCreate, session: Session = Depends(get_session)):
     return crud.create_contrato(session, data)
 
 
-@router.put("/{id}", response_model=Contrato)
+@router.put("/{id}", response_model=ContratoRead)
 def actualizar_contrato(id: int, data: ContratoUpdate, session: Session = Depends(get_session)):
     c = crud.update_contrato(session, id, data)
     if not c:
@@ -66,7 +66,7 @@ def actualizar_contrato(id: int, data: ContratoUpdate, session: Session = Depend
     return c
 
 
-@router.post("/{id}/cerrar", response_model=Contrato)
+@router.post("/{id}/cerrar", response_model=ContratoRead)
 def cerrar_contrato(id: int, session: Session = Depends(get_session)):
     c = crud.cerrar_contrato(session, id)
     if not c:

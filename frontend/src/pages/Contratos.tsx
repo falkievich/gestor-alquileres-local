@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import api from '../lib/api'
 import type { Contrato, ContratoCreate, Departamento, Inquilino } from '../lib/types'
-import { formatMoneda } from '../lib/types'
+import { formatMoneda, formatFecha } from '../lib/types'
 import { Plus, Pencil, X, Download, Lock } from 'lucide-react'
 
 type Modal = 'crear' | 'editar' | null
@@ -162,23 +162,32 @@ export default function Contratos() {
   const activos = contratos.filter(c => c.estado === 'activo')
   const finalizados = contratos.filter(c => c.estado !== 'activo')
 
+  // IDs de inquilinos que ya tienen contrato activo NO vencido
+  const idsConContratoActivo = new Set(
+    contratos
+      .filter(c => c.estado === 'activo' && new Date(c.fecha_fin) >= new Date())
+      .map(c => c.id_inquilinos)
+  )
+  // En el selector solo mostrar inquilinos sin contrato activo vigente
+  const inquilinosDisponibles = inquilinos.filter(i => !idsConContratoActivo.has(i.id_inquilinos))
+
   function ContratoRow({ c }: { c: Contrato }) {
     return (
       <tr className="hover:bg-gray-50">
-        <td className="px-4 py-3">
+        <td className="px-4 py-3 text-left">
           <div className="font-medium text-gray-800">{depNombre(c.id_departamentos)}</div>
         </td>
-        <td className="px-4 py-3 text-gray-700">{inqNombre(c.id_inquilinos)}</td>
-        <td className="px-4 py-3 text-gray-600 text-sm">{c.fecha_inicio}</td>
-        <td className="px-4 py-3 text-gray-600 text-sm">{c.fecha_fin}</td>
-        <td className="px-4 py-3 text-right font-mono">{formatMoneda(c.alquiler_base_actual)}</td>
+        <td className="px-4 py-3 text-left text-gray-700">{inqNombre(c.id_inquilinos)}</td>
+        <td className="px-4 py-3 text-left text-gray-600 text-sm">{formatFecha(c.fecha_inicio)}</td>
+        <td className="px-4 py-3 text-left text-gray-600 text-sm">{formatFecha(c.fecha_fin)}</td>
+        <td className="px-4 py-3 text-left font-mono">{formatMoneda(c.alquiler_base_actual)}</td>
         <td className="px-4 py-3 text-center">{estadoBadge(c)}</td>
-        <td className="px-4 py-3">
+        <td className="px-4 py-3 text-center">
           <div className="flex gap-1 justify-center">
             {c.estado === 'activo' && (
               <>
                 <button onClick={() => abrirEditar(c)} className="p-1.5 hover:bg-gray-100 rounded" title="Editar">
-                  <Pencil size={14} className="text-white" />
+                  <Pencil size={14} className="text-gray-500" />
                 </button>
                 <button onClick={() => cerrar(c)} className="p-1.5 hover:bg-gray-100 rounded" title="Cerrar contrato">
                   <Lock size={14} className="text-orange-500" />
@@ -236,7 +245,7 @@ export default function Contratos() {
               <th className="text-left px-4 py-3 font-semibold text-gray-600">Inquilino</th>
               <th className="text-left px-4 py-3 font-semibold text-gray-600">Inicio</th>
               <th className="text-left px-4 py-3 font-semibold text-gray-600">Vence</th>
-              <th className="text-right px-4 py-3 font-semibold text-gray-600">Alquiler</th>
+              <th className="text-left px-4 py-3 font-semibold text-gray-600">Alquiler</th>
               <th className="text-center px-4 py-3 font-semibold text-gray-600">Estado</th>
               <th className="text-center px-4 py-3 font-semibold text-gray-600">Acciones</th>
             </tr>
@@ -258,7 +267,7 @@ export default function Contratos() {
               <th className="text-left px-4 py-3 font-semibold text-gray-600">Inquilino</th>
               <th className="text-left px-4 py-3 font-semibold text-gray-600">Inicio</th>
               <th className="text-left px-4 py-3 font-semibold text-gray-600">Vencimiento</th>
-              <th className="text-right px-4 py-3 font-semibold text-gray-600">Alquiler</th>
+              <th className="text-left px-4 py-3 font-semibold text-gray-600">Alquiler</th>
               <th className="text-center px-4 py-3 font-semibold text-gray-600">Estado</th>
               <th className="text-center px-4 py-3 font-semibold text-gray-600">Acciones</th>
             </tr>
@@ -291,7 +300,9 @@ export default function Contratos() {
                     >
                       <option value={0}>Seleccionar...</option>
                       {departamentos.filter(d => !d.esta_ocupado).map(d => (
-                        <option key={d.id_departamentos} value={d.id_departamentos}>{d.piso} {d.codigo}</option>
+                        <option key={d.id_departamentos} value={d.id_departamentos}>
+                          {d.piso} {d.codigo}{d.direccion ? ` — ${d.direccion}` : ''}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -303,7 +314,7 @@ export default function Contratos() {
                       onChange={e => setForm(f => ({ ...f, id_inquilinos: Number(e.target.value) }))}
                     >
                       <option value={0}>Seleccionar...</option>
-                      {inquilinos.map(i => (
+                      {inquilinosDisponibles.map(i => (
                         <option key={i.id_inquilinos} value={i.id_inquilinos}>{i.nombre_apellido}</option>
                       ))}
                     </select>
@@ -329,7 +340,7 @@ export default function Contratos() {
                 <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
                   value={form.alquiler_base_actual || ''}
                   onChange={e => setForm(f => ({ ...f, alquiler_base_actual: Number(e.target.value) }))}
-                  placeholder="100000"
+                  placeholder="Por ejemplo: 100000"
                 />
               </div>
               <div>
@@ -337,7 +348,7 @@ export default function Contratos() {
                 <input type="number" step="0.1" className="w-full border rounded-lg px-3 py-2 text-sm"
                   value={form.porcentaje_aumento || ''}
                   onChange={e => setForm(f => ({ ...f, porcentaje_aumento: Number(e.target.value) }))}
-                  placeholder="8.0"
+                  placeholder="Por ejemplo: 8.0"
                 />
               </div>
               <div>
@@ -345,7 +356,7 @@ export default function Contratos() {
                 <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
                   value={form.periodicidad_aumento_meses || ''}
                   onChange={e => setForm(f => ({ ...f, periodicidad_aumento_meses: Number(e.target.value) }))}
-                  placeholder="3"
+                  placeholder="Por ejemplo: 3"
                 />
               </div>
             </div>
@@ -372,7 +383,7 @@ export default function Contratos() {
                 <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
                   value={form.expensa_base_actual || ''}
                   onChange={e => setForm(f => ({ ...f, expensa_base_actual: Number(e.target.value) || undefined }))}
-                  placeholder="20000"
+                  placeholder="Por ejemplo: 20000"
                 />
               </div>
             )}
@@ -392,7 +403,7 @@ export default function Contratos() {
             </div>
 
             <div className="flex gap-2 justify-end mt-5">
-              <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-100 text-white">Cancelar</button>
+              <button onClick={() => setModal(null)} className="px-4 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100">Cancelar</button>
               <button onClick={guardar} disabled={uploading} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
                 {uploading ? 'Subiendo...' : 'Guardar'}
               </button>

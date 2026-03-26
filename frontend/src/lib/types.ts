@@ -129,3 +129,9 @@ export function formatMoneda(valor?: number) {
   if (valor == null) return '-'
   return `$${valor.toLocaleString('es-AR')}`
 }
+
+export function formatFecha(fecha?: string) {
+  if (!fecha) return '-'
+  const [anio, mes, dia] = fecha.split('-')
+  return `${dia}/${mes}/${anio}`
+}

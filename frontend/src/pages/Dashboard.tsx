@@ -15,6 +15,7 @@ export default function Dashboard() {
   const [backupMsg, setBackupMsg] = useState('')
   const [overrideModal, setOverrideModal] = useState<DashboardItem | null>(null)
   const [overrideData, setOverrideData] = useState({ alquiler_override: '', expensa_override: '', nota_override: '' })
+  const [confirmarPagoModal, setConfirmarPagoModal] = useState<DashboardItem | null>(null)
 
   async function cargar() {
     setLoading(true)
@@ -79,7 +80,7 @@ export default function Dashboard() {
         <div className="flex gap-2 flex-wrap justify-end">
           <button
             onClick={() => setShowPagados(!showPagados)}
-            className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100 transition text-white"
+            className="flex items-center gap-2 px-3 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
           >
             {showPagados ? <EyeOff size={16} /> : <Eye size={16} />}
             {showPagados ? 'Ocultar pagados' : 'Mostrar pagados'}
@@ -87,7 +88,7 @@ export default function Dashboard() {
           <button onClick={handleImprimir} className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition">
             <Printer size={16} /> Imprimir
           </button>
-          <button onClick={cargar} className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100 transition text-white">
+          <button onClick={cargar} className="flex items-center gap-2 px-3 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition">
             <RefreshCw size={16} /> Actualizar
           </button>
           <button onClick={crearBackup} className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
@@ -128,9 +129,9 @@ export default function Dashboard() {
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Inquilino</th>
                 <th className="text-right px-4 py-3 font-semibold text-gray-600">Alquiler</th>
                 <th className="text-right px-4 py-3 font-semibold text-gray-600">Expensa</th>
-                <th className="text-right px-4 py-3 font-semibold text-gray-600">Agua</th>
-                <th className="text-right px-4 py-3 font-semibold text-gray-600">Luz</th>
-                <th className="text-right px-4 py-3 font-semibold text-gray-600">Total</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Agua</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Luz</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Total</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Servicios</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Pago</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600 print:hidden">Acciones</th>
@@ -163,13 +164,13 @@ export default function Dashboard() {
                     <td className="px-4 py-3 text-gray-700">{item.inquilino?.nombre_apellido}</td>
                     <td className="px-4 py-3 text-right font-mono">{formatMoneda(alq)}</td>
                     <td className="px-4 py-3 text-right font-mono">{item.contrato.cobra_expensa ? formatMoneda(exp) : <span className="text-gray-400">-</span>}</td>
-                    <td className="px-4 py-3 text-right font-mono">
+                    <td className="px-4 py-3 text-center font-mono">
                       {item.contrato.cobra_agua ? (reg.agua != null ? formatMoneda(reg.agua) : <span className="text-orange-500">Pend.</span>) : <span className="text-gray-400">-</span>}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono">
+                    <td className="px-4 py-3 text-center font-mono">
                       {item.contrato.cobra_luz ? (reg.luz != null ? formatMoneda(reg.luz) : <span className="text-orange-500">Pend.</span>) : <span className="text-gray-400">-</span>}
                     </td>
-                    <td className="px-4 py-3 text-right font-bold font-mono">{formatMoneda(item.total)}</td>
+                    <td className="px-4 py-3 text-center font-bold font-mono">{formatMoneda(item.total)}</td>
                     <td className="px-4 py-3 text-center">
                       {item.estado_servicios === 'OK' ? (
                         <span className="inline-flex items-center gap-1 text-green-600 text-xs font-semibold">
@@ -196,7 +197,7 @@ export default function Dashboard() {
                       <div className="flex gap-1 justify-center">
                         {!reg.pagado && item.estado_servicios === 'OK' && (
                           <button
-                            onClick={() => marcarPagado(reg.id_registros_mensuales)}
+                            onClick={() => setConfirmarPagoModal(item)}
                             className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition"
                           >
                             Cobrado
@@ -219,7 +220,7 @@ export default function Dashboard() {
                               nota_override: reg.nota_override ?? '',
                             })
                           }}
-                          className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-100 transition text-white"
+                          className="text-xs px-2 py-1 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-100 transition"
                         >
                           Ajuste
                         </button>
@@ -243,9 +244,15 @@ export default function Dashboard() {
       {overrideModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 print:hidden">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
-            <h3 className="font-bold text-lg mb-4">
+            <h3 className="font-bold text-lg mb-1">
               Ajuste del mes — {overrideModal.departamento?.piso} {overrideModal.departamento?.codigo}
             </h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Usá este formulario para modificar el alquiler y/o la expensa <strong>solo por este mes</strong>,
+              sin alterar los valores base del contrato ni los cálculos de meses futuros.
+              Es útil para aplicar descuentos, acuerdos puntuales o correcciones extraordinarias.
+              Dejá un campo vacío para que se use el valor calculado automáticamente.
+            </p>
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -285,7 +292,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex gap-2 justify-end mt-5">
-              <button onClick={() => setOverrideModal(null)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-100 text-white">
+              <button onClick={() => setOverrideModal(null)} className="px-4 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100">
                 Cancelar
               </button>
               <button onClick={guardarOverride} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
@@ -295,6 +302,53 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Modal confirmación cobro */}
+      {confirmarPagoModal && (() => {
+        const item = confirmarPagoModal
+        const dep = item.departamento
+        const depLabel = [dep?.piso, dep?.codigo, dep?.direccion].filter(Boolean).join(' · ')
+        return (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 print:hidden">
+            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                  <CheckCircle2 size={20} className="text-green-600" />
+                </div>
+                <h3 className="font-bold text-lg text-gray-800">Confirmar cobro</h3>
+              </div>
+              <p className="text-sm text-gray-600 mb-1">
+                ¿Confirmar que se cobró el alquiler de:
+              </p>
+              <p className="text-sm font-semibold text-gray-800 mb-0.5">
+                {item.inquilino?.nombre_apellido}
+              </p>
+              <p className="text-sm text-gray-500 mb-3">{depLabel}</p>
+              <div className="bg-gray-50 rounded-lg px-4 py-2 mb-5 text-center">
+                <span className="text-xs text-gray-500 uppercase tracking-wide">Total a cobrar</span>
+                <p className="text-2xl font-bold text-gray-800 mt-0.5">{formatMoneda(item.total)}</p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmarPagoModal(null)}
+                  className="flex-1 px-4 py-2 text-sm border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-100 hover:border-gray-400 transition font-medium"
+                >
+                  No, cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    marcarPagado(item.registro.id_registros_mensuales)
+                    setConfirmarPagoModal(null)
+                  }}
+                  className="flex-1 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 active:bg-green-800 transition font-semibold"
+                >
+                  Sí, cobrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

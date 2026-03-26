@@ -6,6 +6,7 @@ from app.db import get_session
 from app.model.models import Contrato, RegistroMensual
 from app.crud import contratos as crud_contratos
 from app.crud import registros as crud_registros
+from app.model.models import ContratoRead
 from app.service.mes_service import (
     get_mes_actual,
     get_or_create_registro,
@@ -60,7 +61,7 @@ def get_dashboard(session: Session = Depends(get_session)):
         inq = session.get(Inquilino, contrato.id_inquilinos)
 
         resultado.append({
-            "contrato": contrato,
+            "contrato": ContratoRead.model_validate(contrato),
             "registro": registro,
             "departamento": dep,
             "inquilino": inq,
