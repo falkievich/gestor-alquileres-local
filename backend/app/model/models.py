@@ -84,6 +84,7 @@ class ContratoCreate(SQLModel):
 
 
 class ContratoUpdate(SQLModel):
+    fecha_inicio: Optional[date] = None
     fecha_fin: Optional[date] = None
     alquiler_base_actual: Optional[int] = None
     expensa_base_actual: Optional[int] = None

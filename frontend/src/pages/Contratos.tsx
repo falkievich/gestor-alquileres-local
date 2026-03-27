@@ -107,8 +107,8 @@ export default function Contratos() {
         const res = await api.post('/contratos/', form)
         contratoId = res.data.id_contratos
       } else if (modal === 'editar' && selected) {
-        const { id_departamentos, id_inquilinos, fecha_inicio, ...editData } = form
-        void id_departamentos; void id_inquilinos; void fecha_inicio
+        const { id_departamentos, id_inquilinos, ...editData } = form
+        void id_departamentos; void id_inquilinos
         await api.put(`/contratos/${selected.id_contratos}`, editData)
         contratoId = selected.id_contratos
       } else return
@@ -335,6 +335,15 @@ export default function Contratos() {
                     />
                   </div>
                 </>
+              )}
+              {modal === 'editar' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha inicio</label>
+                  <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm"
+                    value={form.fecha_inicio}
+                    onChange={e => setForm(f => ({ ...f, fecha_inicio: e.target.value }))}
+                  />
+                </div>
               )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Fecha vencimiento *</label>

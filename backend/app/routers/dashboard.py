@@ -29,6 +29,10 @@ def get_dashboard(session: Session = Depends(get_session)):
     resultado = []
 
     for contrato in contratos:
+        # No mostrar contratos cuya fecha de inicio aún no llegó
+        if contrato.fecha_inicio > hoy:
+            continue
+
         # Aplicar aumento si corresponde antes de crear el registro
         aplicar_aumento_si_corresponde(session, contrato, anio, mes)
         # Refrescar contrato con posibles cambios
