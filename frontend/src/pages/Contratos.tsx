@@ -151,7 +151,7 @@ export default function Contratos() {
 
   function depNombre(id: number) {
     const d = departamentos.find(d => d.id_departamentos === id)
-    return d ? `${d.piso} ${d.codigo}` : id
+    return d ?? null
   }
 
   function inqNombre(id: number) {
@@ -172,10 +172,18 @@ export default function Contratos() {
   const inquilinosDisponibles = inquilinos.filter(i => !idsConContratoActivo.has(i.id_inquilinos))
 
   function ContratoRow({ c }: { c: Contrato }) {
+    const dep = depNombre(c.id_departamentos)
     return (
       <tr className="hover:bg-gray-50">
         <td className="px-4 py-3 text-left">
-          <div className="font-medium text-gray-800">{depNombre(c.id_departamentos)}</div>
+          <div className="font-medium text-gray-800">
+            {dep ? `${dep.piso} ${dep.codigo}` : c.id_departamentos}
+          </div>
+          {dep?.direccion && (
+            <div className="text-xs text-gray-400 truncate max-w-[160px]" title={dep.direccion}>
+              {dep.direccion}
+            </div>
+          )}
         </td>
         <td className="px-4 py-3 text-left text-gray-700">{inqNombre(c.id_inquilinos)}</td>
         <td className="px-4 py-3 text-left text-gray-600 text-sm">{formatFecha(c.fecha_inicio)}</td>
