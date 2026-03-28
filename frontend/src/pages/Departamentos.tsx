@@ -4,6 +4,12 @@ import type { Departamento, DepartamentoCreate, HistorialItem, PagoItem } from '
 import { PISOS, MESES, formatMoneda, formatFecha } from '../lib/types'
 import { Plus, Pencil, Trash2, History, X } from 'lucide-react'
 
+function formatDepto(piso: string | undefined, codigo: string | undefined) {
+  if (!piso || !codigo) return `${piso ?? ''} ${codigo ?? ''}`.trim()
+  const pisoAbrev = piso === 'Planta baja' ? 'PB' : piso.replace('Piso ', 'P')
+  return `${pisoAbrev}-${codigo}`
+}
+
 type Modal = 'crear' | 'editar' | 'historial' | 'pagos' | null
 
 export default function Departamentos() {
@@ -101,7 +107,7 @@ export default function Departamentos() {
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-lg font-bold text-gray-800 truncate">{dep.piso} — {dep.codigo}</span>
+                  <span className="text-lg font-bold text-gray-800 truncate">{formatDepto(dep.piso, dep.codigo)}</span>
                 </div>
                 {dep.direccion && <p className="text-xs text-gray-500 mt-0.5">{dep.direccion}</p>}
                 <span className={`inline-block mt-2 text-xs font-semibold px-2 py-0.5 rounded-full ${dep.esta_ocupado ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>
@@ -192,7 +198,7 @@ export default function Departamentos() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg">Historial — {selected.piso} {selected.codigo}</h3>
+              <h3 className="font-bold text-lg">Historial — {formatDepto(selected.piso, selected.codigo)}</h3>
               <button onClick={() => setModal(null)}><X size={18} className="text-gray-500" /></button>
             </div>
             {historial.length === 0 ? (
@@ -232,7 +238,7 @@ export default function Departamentos() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg">Pagos — {selected.piso} {selected.codigo}</h3>
+              <h3 className="font-bold text-lg">Pagos — {formatDepto(selected.piso, selected.codigo)}</h3>
               <button onClick={() => setModal(null)}><X size={18} className="text-gray-500" /></button>
             </div>
             <div className="flex gap-3 mb-4">

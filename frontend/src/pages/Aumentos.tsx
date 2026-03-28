@@ -4,6 +4,12 @@ import type { AumentoItem } from '../lib/types'
 import { MESES, formatMoneda, formatFecha } from '../lib/types'
 import { TrendingUp, AlertTriangle, XCircle } from 'lucide-react'
 
+function formatDepto(piso: string | undefined, codigo: string | undefined) {
+  if (!piso || !codigo) return `${piso ?? ''} ${codigo ?? ''}`.trim()
+  const pisoAbrev = piso === 'Planta baja' ? 'PB' : piso.replace('Piso ', 'P')
+  return `${pisoAbrev}-${codigo}`
+}
+
 export default function Aumentos() {
   const [items, setItems] = useState<AumentoItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -41,12 +47,11 @@ export default function Aumentos() {
               <div key={item.contrato.id_contratos} className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-gray-800 text-base">
-                        {item.departamento?.piso} {item.departamento?.codigo}
+                        {formatDepto(item.departamento?.piso, item.departamento?.codigo)}
+                        <span className="font-normal text-gray-600"> ({item.inquilino?.nombre_apellido})</span>
                       </span>
-                      <span className="text-gray-500 text-base">—</span>
-                      <span className="text-gray-700 text-base">{item.inquilino?.nombre_apellido}</span>
                       {item.alerta === 'Vencido' && (
                         <span className="flex items-center gap-1 text-sm px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold">
                           <XCircle size={14} /> Vencido
@@ -58,8 +63,11 @@ export default function Aumentos() {
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Vence: {formatFecha(item.contrato.fecha_fin)} · Aumento: {item.contrato.porcentaje_aumento}% cada {item.contrato.periodicidad_aumento_meses} meses
+                    {item.departamento?.direccion && (
+                      <p className="text-sm text-gray-400 mt-0.5">{item.departamento.direccion}</p>
+                    )}
+                    <p className="text-base text-gray-600 mt-1 font-medium">
+                      Aumento: <span className="text-gray-800">{item.contrato.porcentaje_aumento}%</span> cada <span className="text-gray-800">{item.contrato.periodicidad_aumento_meses} meses</span> · Vence: <span className="text-gray-800">{formatFecha(item.contrato.fecha_fin)}</span>
                     </p>
                   </div>
                   <div className="flex items-center gap-2 text-blue-600">
