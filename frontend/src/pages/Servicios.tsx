@@ -4,6 +4,11 @@ import type { DashboardItem } from '../lib/types'
 import { MESES } from '../lib/types'
 import { Save } from 'lucide-react'
 
+function formatDepto(piso: string | undefined, codigo: string | undefined) {
+  if (!piso || !codigo) return `${piso ?? ''} ${codigo ?? ''}`.trim()
+  return `${piso} — ${codigo}`
+}
+
 interface ServicioRow {
   contrato: DashboardItem['contrato']
   registro: DashboardItem['registro']
@@ -95,7 +100,7 @@ export default function Servicios() {
                   <tr key={idReg} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-800">
-                        {item.departamento?.piso} {item.departamento?.codigo}
+                        {formatDepto(item.departamento?.piso, item.departamento?.codigo)}
                       </div>
                       {item.departamento?.direccion && (
                         <div className="text-xs text-gray-400 truncate max-w-[180px]" title={item.departamento.direccion}>

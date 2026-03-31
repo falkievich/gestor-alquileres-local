@@ -4,8 +4,13 @@ import type { DashboardItem, Inquilino } from '../lib/types'
 import { formatMoneda, MESES } from '../lib/types'
 import {
   CheckCircle2, AlertCircle, XCircle, Eye, EyeOff,
-  RefreshCw, Printer, HardDriveDownload
+  RefreshCw, Printer, HardDriveDownload, SlidersHorizontal
 } from 'lucide-react'
+
+function formatDepto(piso: string | undefined, codigo: string | undefined) {
+  if (!piso || !codigo) return `${piso ?? ''} ${codigo ?? ''}`.trim()
+  return `${piso} — ${codigo}`
+}
 
 interface HistorialPagoItem {
   registro: DashboardItem['registro']
@@ -24,8 +29,9 @@ export default function Dashboard() {
   const [showPagados, setShowPagados] = useState(false)
   const [backupMsg, setBackupMsg] = useState('')
   const [overrideModal, setOverrideModal] = useState<DashboardItem | null>(null)
-  const [overrideData, setOverrideData] = useState({ alquiler_override: '', expensa_override: '', nota_override: '' })
+  const [overrideData, setOverrideData] = useState({ alquiler_delta: '', expensa_delta: '', nota_override: '' })
   const [confirmarPagoModal, setConfirmarPagoModal] = useState<DashboardItem | null>(null)
+  const [detalleAjusteModal, setDetalleAjusteModal] = useState<HistorialPagoItem | null>(null)
 
   // Historial de pagos
   const [historial, setHistorial] = useState<HistorialPagoItem[]>([])
@@ -96,10 +102,24 @@ export default function Dashboard() {
     if (!overrideModal) return
     const idReg = overrideModal.registro.id_registros_mensuales
     const params: Record<string, string | number> = {}
-    if (overrideData.alquiler_override !== '') params.alquiler_override = Number(overrideData.alquiler_override)
-    if (overrideData.expensa_override !== '') params.expensa_override = Number(overrideData.expensa_override)
+    if (overrideData.alquiler_delta !== '') {
+      const delta = Number(overrideData.alquiler_delta)
+      params.alquiler_override = overrideModal.registro.alquiler_calculado + delta
+    }
+    if (overrideData.expensa_delta !== '') {
+      const delta = Number(overrideData.expensa_delta)
+      params.expensa_override = (overrideModal.registro.expensa_calculada ?? 0) + delta
+    }
     if (overrideData.nota_override !== '') params.nota_override = overrideData.nota_override
     await api.post(`/dashboard/registros/${idReg}/override`, null, { params })
+    setOverrideModal(null)
+    cargar()
+  }
+
+  async function restaurarOverride() {
+    if (!overrideModal) return
+    const idReg = overrideModal.registro.id_registros_mensuales
+    await api.post(`/dashboard/registros/${idReg}/override`, null, { params: {} })
     setOverrideModal(null)
     cargar()
   }
@@ -233,6 +253,7 @@ export default function Dashboard() {
                     <th className="text-right px-4 py-3 font-semibold text-gray-600">Agua</th>
                     <th className="text-right px-4 py-3 font-semibold text-gray-600">Luz</th>
                     <th className="text-center px-4 py-3 font-semibold text-gray-600">Total</th>
+                    <th className="text-center px-4 py-3 font-semibold text-gray-600 print:hidden"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -247,7 +268,12 @@ export default function Dashboard() {
                           <span className="text-gray-500 ml-1">{h.anio}</span>
                         </td>
                         <td className="px-4 py-3 font-medium text-gray-800">
-                          {h.departamento?.piso} {h.departamento?.codigo}
+                          {formatDepto(h.departamento?.piso, h.departamento?.codigo)}
+                          {(reg.alquiler_override != null || reg.expensa_override != null) && (
+                            <span className="ml-2 inline-block text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-semibold">
+                              Ajustado
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-gray-700">{h.inquilino?.nombre_apellido}</td>
                         <td className="px-4 py-3 text-right font-mono">{formatMoneda(alq)}</td>
@@ -261,6 +287,16 @@ export default function Dashboard() {
                           {h.contrato.cobra_luz ? (reg.luz != null ? formatMoneda(reg.luz) : <span className="text-gray-400">-</span>) : <span className="text-gray-400">-</span>}
                         </td>
                         <td className="px-4 py-3 text-center font-bold font-mono text-green-700">{formatMoneda(h.total)}</td>
+                        <td className="px-4 py-3 text-center print:hidden">
+                          {(reg.alquiler_override != null || reg.expensa_override != null) && (
+                            <button
+                              onClick={() => setDetalleAjusteModal(h)}
+                              className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-yellow-50 border border-yellow-300 text-yellow-700 rounded hover:bg-yellow-100 transition"
+                            >
+                              <SlidersHorizontal size={12} /> Ver ajuste
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     )
                   })}
@@ -304,17 +340,22 @@ export default function Dashboard() {
                   <tr key={reg.id_registros_mensuales} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-800">
-                        {item.departamento?.piso} {item.departamento?.codigo}
+                        {formatDepto(item.departamento?.piso, item.departamento?.codigo)}
                       </div>
+                      {item.departamento?.direccion && (
+                        <div className="text-xs text-gray-400 truncate max-w-[180px]" title={item.departamento.direccion}>
+                          {item.departamento.direccion}
+                        </div>
+                      )}
                       <div className="flex gap-1 mt-1 flex-wrap">
                         {item.vencido && (
                           <span className="inline-block text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-semibold">
                             Vencido
                           </span>
                         )}
-                        {reg.nota_override && (
-                          <span className="inline-block text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded">
-                            Ajuste
+                        {(reg.alquiler_override != null || reg.expensa_override != null) && (
+                          <span className="inline-block text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-semibold">
+                            Ajustado
                           </span>
                         )}
                       </div>
@@ -377,9 +418,16 @@ export default function Dashboard() {
                         <button
                           onClick={() => {
                             setOverrideModal(item)
+                            // Convert existing absolute override back to delta for display
+                            const alqDelta = reg.alquiler_override != null
+                              ? (reg.alquiler_override - reg.alquiler_calculado).toString()
+                              : ''
+                            const expDelta = reg.expensa_override != null
+                              ? (reg.expensa_override - (reg.expensa_calculada ?? 0)).toString()
+                              : ''
                             setOverrideData({
-                              alquiler_override: reg.alquiler_override?.toString() ?? '',
-                              expensa_override: reg.expensa_override?.toString() ?? '',
+                              alquiler_delta: alqDelta,
+                              expensa_delta: expDelta,
                               nota_override: reg.nota_override ?? '',
                             })
                           }}
@@ -404,43 +452,60 @@ export default function Dashboard() {
       )}
 
       {/* Override Modal */}
-      {overrideModal && (
+      {overrideModal && (() => {
+        const reg = overrideModal.registro
+        const alqBase = reg.alquiler_calculado
+        const expBase = reg.expensa_calculada ?? 0
+        const alqDelta = overrideData.alquiler_delta !== '' ? Number(overrideData.alquiler_delta) : 0
+        const expDelta = overrideData.expensa_delta !== '' ? Number(overrideData.expensa_delta) : 0
+        const alqFinal = alqBase + alqDelta
+        const expFinal = expBase + expDelta
+        const tieneOverride = reg.alquiler_override != null || reg.expensa_override != null
+        return (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 print:hidden">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
             <h3 className="font-bold text-lg mb-1">
-              Ajuste del mes — {overrideModal.departamento?.piso} {overrideModal.departamento?.codigo}
+              Ajuste del mes — {formatDepto(overrideModal.departamento?.piso, overrideModal.departamento?.codigo)}
             </h3>
             <p className="text-sm text-gray-500 mb-4">
-              Usá este formulario para modificar el alquiler y/o la expensa <strong>solo por este mes</strong>,
-              sin alterar los valores base del contrato ni los cálculos de meses futuros.
-              Es útil para aplicar descuentos, acuerdos puntuales o correcciones extraordinarias.
-              Dejá un campo vacío para que se use el valor calculado automáticamente.
+              Ingresá el monto a <strong>sumar o restar</strong> al valor base de este mes.
+              Usá un número negativo para aplicar un descuento. Dejá vacío si no querés ajustar.
             </p>
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Alquiler (dejar vacío para usar calculado: {formatMoneda(overrideModal.registro.alquiler_calculado)})
+                  Ajuste alquiler · Base: {formatMoneda(alqBase)}
                 </label>
                 <input
                   type="number"
                   className="w-full border rounded-lg px-3 py-2 text-sm"
-                  value={overrideData.alquiler_override}
-                  onChange={e => setOverrideData(d => ({ ...d, alquiler_override: e.target.value }))}
-                  placeholder="Ej: 150000"
+                  value={overrideData.alquiler_delta}
+                  onChange={e => setOverrideData(d => ({ ...d, alquiler_delta: e.target.value }))}
+                  placeholder="Ej: 50000 o -30000"
                 />
+                {overrideData.alquiler_delta !== '' && (
+                  <p className={`text-xs mt-1 ${alqDelta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    Resultado: {formatMoneda(alqFinal)} ({alqDelta >= 0 ? '+' : ''}{formatMoneda(alqDelta)})
+                  </p>
+                )}
               </div>
               {overrideModal.contrato.cobra_expensa && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Expensa (dejar vacío para usar calculada)
+                    Ajuste expensa · Base: {formatMoneda(expBase)}
                   </label>
                   <input
                     type="number"
                     className="w-full border rounded-lg px-3 py-2 text-sm"
-                    value={overrideData.expensa_override}
-                    onChange={e => setOverrideData(d => ({ ...d, expensa_override: e.target.value }))}
-                    placeholder="Ej: 20000"
+                    value={overrideData.expensa_delta}
+                    onChange={e => setOverrideData(d => ({ ...d, expensa_delta: e.target.value }))}
+                    placeholder="Ej: 5000 o -5000"
                   />
+                  {overrideData.expensa_delta !== '' && (
+                    <p className={`text-xs mt-1 ${expDelta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      Resultado: {formatMoneda(expFinal)} ({expDelta >= 0 ? '+' : ''}{formatMoneda(expDelta)})
+                    </p>
+                  )}
                 </div>
               )}
               <div>
@@ -454,23 +519,127 @@ export default function Dashboard() {
                 />
               </div>
             </div>
-            <div className="flex gap-2 justify-end mt-5">
-              <button onClick={() => setOverrideModal(null)} className="px-4 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100">
-                Cancelar
-              </button>
-              <button onClick={guardarOverride} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                Guardar ajuste
-              </button>
+            <div className="flex gap-2 justify-between mt-5">
+              <div>
+                {tieneOverride && (
+                  <button onClick={restaurarOverride} className="px-4 py-2 text-sm bg-orange-50 border border-orange-300 text-orange-700 rounded-lg hover:bg-orange-100">
+                    Restaurar original
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setOverrideModal(null)} className="px-4 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100">
+                  Cancelar
+                </button>
+                <button onClick={guardarOverride} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                  Guardar ajuste
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      )}
+        )
+      })()}
+
+      {/* Modal detalle de ajuste (historial) */}
+      {detalleAjusteModal && (() => {
+        const h = detalleAjusteModal
+        const reg = h.registro
+        const tieneAlqAjuste = reg.alquiler_override != null
+        const tieneExpAjuste = reg.expensa_override != null
+        return (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 print:hidden">
+            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
+                  <SlidersHorizontal size={20} className="text-yellow-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-gray-800">Detalle del ajuste</h3>
+                  <p className="text-sm text-gray-500">
+                    {MESES[h.mes - 1]} {h.anio} · {formatDepto(h.departamento?.piso, h.departamento?.codigo)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {/* Alquiler */}
+                <div className="rounded-lg border border-gray-200 overflow-hidden">
+                  <div className="bg-gray-50 px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Alquiler</div>
+                  <div className="px-4 py-3 grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-gray-400 mb-0.5">Valor original</p>
+                      <p className="font-mono font-semibold text-gray-700">{formatMoneda(reg.alquiler_calculado)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 mb-0.5">Valor cobrado</p>
+                      {tieneAlqAjuste ? (
+                        <div>
+                          <p className="font-mono font-semibold text-yellow-700">{formatMoneda(reg.alquiler_override!)}</p>
+                          <p className={`text-xs mt-0.5 ${(reg.alquiler_override! - reg.alquiler_calculado) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {(reg.alquiler_override! - reg.alquiler_calculado) >= 0 ? '+' : ''}{formatMoneda(reg.alquiler_override! - reg.alquiler_calculado)}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="font-mono font-semibold text-gray-400">Sin ajuste</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Expensa (solo si cobra) */}
+                {h.contrato.cobra_expensa && (
+                  <div className="rounded-lg border border-gray-200 overflow-hidden">
+                    <div className="bg-gray-50 px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Expensa</div>
+                    <div className="px-4 py-3 grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-xs text-gray-400 mb-0.5">Valor original</p>
+                        <p className="font-mono font-semibold text-gray-700">{formatMoneda(reg.expensa_calculada)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 mb-0.5">Valor cobrado</p>
+                        {tieneExpAjuste ? (
+                          <div>
+                            <p className="font-mono font-semibold text-yellow-700">{formatMoneda(reg.expensa_override!)}</p>
+                            <p className={`text-xs mt-0.5 ${(reg.expensa_override! - (reg.expensa_calculada ?? 0)) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {(reg.expensa_override! - (reg.expensa_calculada ?? 0)) >= 0 ? '+' : ''}{formatMoneda(reg.expensa_override! - (reg.expensa_calculada ?? 0))}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="font-mono font-semibold text-gray-400">Sin ajuste</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Nota */}
+                {reg.nota_override && (
+                  <div className="rounded-lg bg-yellow-50 border border-yellow-200 px-4 py-3">
+                    <p className="text-xs font-semibold text-yellow-700 mb-1">Nota del ajuste</p>
+                    <p className="text-sm text-yellow-800">{reg.nota_override}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-5 flex justify-end">
+                <button
+                  onClick={() => setDetalleAjusteModal(null)}
+                  className="px-4 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Modal confirmación cobro */}
       {confirmarPagoModal && (() => {
         const item = confirmarPagoModal
         const dep = item.departamento
-        const depLabel = [dep?.piso, dep?.codigo, dep?.direccion].filter(Boolean).join(' · ')
+        const depLabel = [dep?.piso && dep?.codigo ? `${dep.piso} — ${dep.codigo}` : [dep?.piso, dep?.codigo].filter(Boolean).join(' '), dep?.direccion].filter(Boolean).join(' · ')
         return (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 print:hidden">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">

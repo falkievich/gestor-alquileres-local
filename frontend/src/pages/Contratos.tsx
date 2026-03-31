@@ -6,8 +6,7 @@ import { Plus, Pencil, X, Download, Lock } from 'lucide-react'
 
 function formatDepto(piso: string | undefined, codigo: string | undefined) {
   if (!piso || !codigo) return `${piso ?? ''} ${codigo ?? ''}`.trim()
-  const pisoAbrev = piso === 'Planta baja' ? 'PB' : piso.replace('Piso ', 'P')
-  return `${pisoAbrev}-${codigo}`
+  return `${piso} — ${codigo}`
 }
 
 type Modal = 'crear' | 'editar' | null

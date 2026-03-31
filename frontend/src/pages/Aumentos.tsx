@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 import api from '../lib/api'
 import type { AumentoItem } from '../lib/types'
-import { MESES, formatMoneda, formatFecha } from '../lib/types'
+import { MESES, formatMoneda } from '../lib/types'
 import { TrendingUp, AlertTriangle, XCircle } from 'lucide-react'
 
 function formatDepto(piso: string | undefined, codigo: string | undefined) {
   if (!piso || !codigo) return `${piso ?? ''} ${codigo ?? ''}`.trim()
-  const pisoAbrev = piso === 'Planta baja' ? 'PB' : piso.replace('Piso ', 'P')
-  return `${pisoAbrev}-${codigo}`
+  return `${piso} — ${codigo}`
 }
 
 export default function Aumentos() {
@@ -67,7 +66,7 @@ export default function Aumentos() {
                       <p className="text-sm text-gray-400 mt-0.5">{item.departamento.direccion}</p>
                     )}
                     <p className="text-base text-gray-600 mt-1 font-medium">
-                      Aumento: <span className="text-gray-800">{item.contrato.porcentaje_aumento}%</span> cada <span className="text-gray-800">{item.contrato.periodicidad_aumento_meses} meses</span> · Vence: <span className="text-gray-800">{formatFecha(item.contrato.fecha_fin)}</span>
+                      Aumento: <span className="text-gray-800">{item.contrato.porcentaje_aumento}%</span> cada <span className="text-gray-800">{item.contrato.periodicidad_aumento_meses} meses</span>
                     </p>
                   </div>
                   <div className="flex items-center gap-2 text-blue-600">
