@@ -58,6 +58,22 @@ def crear_contrato(data: ContratoCreate, session: Session = Depends(get_session)
     return crud.create_contrato(session, data)
 
 
+@router.get("/{id}/tiene-pagos")
+def tiene_pagos(id: int, session: Session = Depends(get_session)):
+    from sqlmodel import select
+    from app.model.models import RegistroMensual
+    c = crud.get_contrato(session, id)
+    if not c:
+        raise HTTPException(status_code=404, detail="Contrato no encontrado")
+    pagado = session.exec(
+        select(RegistroMensual).where(
+            RegistroMensual.id_contratos == id,
+            RegistroMensual.pagado == True
+        )
+    ).first()
+    return {"tiene_pagos": pagado is not None}
+
+
 @router.put("/{id}", response_model=ContratoRead)
 def actualizar_contrato(id: int, data: ContratoUpdate, session: Session = Depends(get_session)):
     c = crud.update_contrato(session, id, data)
@@ -101,13 +117,16 @@ def descargar_archivo(id: int, session: Session = Depends(get_session)):
     if not c:
         raise HTTPException(status_code=404, detail="Contrato no encontrado")
     if not c.archivo_blob:
-        raise HTTPException(status_code=404, detail="No hay archivo para este contrato")
-    ext = os.path.splitext(c.archivo_nombre or "")[1].lower() if c.archivo_nombre else ".pdf"
+        raise HTTPException(
+            status_code=404, detail="No hay archivo para este contrato")
+    ext = os.path.splitext(c.archivo_nombre or "")[
+        1].lower() if c.archivo_nombre else ".pdf"
     content_type = "application/pdf" if ext == ".pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     return Response(
         content=c.archivo_blob,
         media_type=content_type,
-        headers={"Content-Disposition": f"attachment; filename={c.archivo_nombre or 'contrato' + ext}"}
+        headers={
+            "Content-Disposition": f"attachment; filename={c.archivo_nombre or 'contrato' + ext}"}
     )
 
 

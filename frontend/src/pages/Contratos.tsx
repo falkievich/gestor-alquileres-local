@@ -4,6 +4,11 @@ import type { Contrato, ContratoCreate, Departamento, Inquilino } from '../lib/t
 import { formatMoneda, formatFecha } from '../lib/types'
 import { Plus, Pencil, X, Download, Lock } from 'lucide-react'
 
+function formatDepto(piso: string | undefined, codigo: string | undefined) {
+  if (!piso || !codigo) return `${piso ?? ''} ${codigo ?? ''}`.trim()
+  return `${piso} — ${codigo}`
+}
+
 type Modal = 'crear' | 'editar' | null
 
 function estadoBadge(contrato: Contrato) {
@@ -46,6 +51,7 @@ export default function Contratos() {
   const [errorMsg, setErrorMsg] = useState('')
   const [archivoFile, setArchivoFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [fechaInicioBlocked, setFechaInicioBlocked] = useState(false)
   // Filtros
   const [filtroInq, setFiltroInq] = useState('')
   const [filtroDep, setFiltroDep] = useState('')
@@ -76,10 +82,11 @@ export default function Contratos() {
     setForm(emptyForm)
     setArchivoFile(null)
     setErrorMsg('')
+    setFechaInicioBlocked(false)
     setModal('crear')
   }
 
-  function abrirEditar(c: Contrato) {
+  async function abrirEditar(c: Contrato) {
     setSelected(c)
     setForm({
       id_departamentos: c.id_departamentos,
@@ -96,6 +103,13 @@ export default function Contratos() {
     })
     setArchivoFile(null)
     setErrorMsg('')
+    // Verificar si ya existen registros pagados para este contrato
+    try {
+      const res = await api.get(`/contratos/${c.id_contratos}/tiene-pagos`)
+      setFechaInicioBlocked(res.data.tiene_pagos)
+    } catch {
+      setFechaInicioBlocked(false)
+    }
     setModal('editar')
   }
 
@@ -107,8 +121,8 @@ export default function Contratos() {
         const res = await api.post('/contratos/', form)
         contratoId = res.data.id_contratos
       } else if (modal === 'editar' && selected) {
-        const { id_departamentos, id_inquilinos, fecha_inicio, ...editData } = form
-        void id_departamentos; void id_inquilinos; void fecha_inicio
+        const { id_departamentos, id_inquilinos, ...editData } = form
+        void id_departamentos; void id_inquilinos
         await api.put(`/contratos/${selected.id_contratos}`, editData)
         contratoId = selected.id_contratos
       } else return
@@ -168,8 +182,10 @@ export default function Contratos() {
       .filter(c => c.estado === 'activo' && new Date(c.fecha_fin) >= new Date())
       .map(c => c.id_inquilinos)
   )
-  // En el selector solo mostrar inquilinos sin contrato activo vigente
-  const inquilinosDisponibles = inquilinos.filter(i => !idsConContratoActivo.has(i.id_inquilinos))
+  // En el selector solo mostrar inquilinos sin contrato activo vigente y con es_actual = true
+  const inquilinosDisponibles = inquilinos.filter(i =>
+    !idsConContratoActivo.has(i.id_inquilinos) && i.es_actual
+  )
 
   function ContratoRow({ c }: { c: Contrato }) {
     const dep = depNombre(c.id_departamentos)
@@ -177,7 +193,7 @@ export default function Contratos() {
       <tr className="hover:bg-gray-50">
         <td className="px-4 py-3 text-left">
           <div className="font-medium text-gray-800">
-            {dep ? `${dep.piso} ${dep.codigo}` : c.id_departamentos}
+            {dep ? formatDepto(dep.piso, dep.codigo) : c.id_departamentos}
           </div>
           {dep?.direccion && (
             <div className="text-xs text-gray-400 truncate max-w-[160px]" title={dep.direccion}>
@@ -233,7 +249,7 @@ export default function Contratos() {
         </select>
         <select className="border rounded-lg px-3 py-2 text-sm" value={filtroDep} onChange={e => setFiltroDep(e.target.value)}>
           <option value="">Todos los departamentos</option>
-          {departamentos.map(d => <option key={d.id_departamentos} value={d.id_departamentos}>{d.piso} {d.codigo}</option>)}
+          {departamentos.map(d => <option key={d.id_departamentos} value={d.id_departamentos}>{formatDepto(d.piso, d.codigo)}</option>)}
         </select>
         <select className="border rounded-lg px-3 py-2 text-sm" value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
           <option value="">Todos los estados</option>
@@ -309,7 +325,7 @@ export default function Contratos() {
                       <option value={0}>Seleccionar...</option>
                       {departamentos.filter(d => !d.esta_ocupado).map(d => (
                         <option key={d.id_departamentos} value={d.id_departamentos}>
-                          {d.piso} {d.codigo}{d.direccion ? ` — ${d.direccion}` : ''}
+                          {formatDepto(d.piso, d.codigo)}{d.direccion ? ` — ${d.direccion}` : ''}
                         </option>
                       ))}
                     </select>
@@ -335,6 +351,25 @@ export default function Contratos() {
                     />
                   </div>
                 </>
+              )}
+              {modal === 'editar' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha inicio</label>
+                  <input type="date" className={`w-full border rounded-lg px-3 py-2 text-sm ${fechaInicioBlocked ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''}`}
+                    value={form.fecha_inicio}
+                    disabled={fechaInicioBlocked}
+                    onChange={e => setForm(f => ({ ...f, fecha_inicio: e.target.value }))}
+                  />
+                  {fechaInicioBlocked && (
+                    <div className="mt-1.5 flex items-start gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                      <span className="mt-0.5 shrink-0">⚠️</span>
+                      <span>
+                        La fecha de inicio no puede modificarse porque este contrato ya tiene meses cobrados.
+                        Cambiarla alteraría el calendario de aumentos y podría generar inconsistencias en los registros históricos.
+                      </span>
+                    </div>
+                  )}
+                </div>
               )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Fecha vencimiento *</label>

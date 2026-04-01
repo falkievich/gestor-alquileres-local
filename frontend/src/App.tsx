@@ -54,7 +54,7 @@ function App() {
             ))}
           </nav>
           <div className="px-4 py-3 border-t border-slate-700 text-xs text-slate-500">
-            v1.0 — local
+            Gestor de Alquileres - v1.0
           </div>
         </aside>
 
