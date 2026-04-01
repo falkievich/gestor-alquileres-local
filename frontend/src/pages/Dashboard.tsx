@@ -4,7 +4,7 @@ import type { DashboardItem, Inquilino } from '../lib/types'
 import { formatMoneda, MESES } from '../lib/types'
 import {
   CheckCircle2, AlertCircle, XCircle, Eye, EyeOff,
-  RefreshCw, Printer, HardDriveDownload, SlidersHorizontal
+  RefreshCw, Printer, HardDriveDownload, SlidersHorizontal, ListChecks
 } from 'lucide-react'
 
 function formatDepto(piso: string | undefined, codigo: string | undefined) {
@@ -32,6 +32,12 @@ export default function Dashboard() {
   const [overrideData, setOverrideData] = useState({ alquiler_delta: '', expensa_delta: '', nota_override: '' })
   const [confirmarPagoModal, setConfirmarPagoModal] = useState<DashboardItem | null>(null)
   const [detalleAjusteModal, setDetalleAjusteModal] = useState<HistorialPagoItem | null>(null)
+
+  // Ajuste masivo
+  const [modoSeleccion, setModoSeleccion] = useState(false)
+  const [seleccionados, setSeleccionados] = useState<Set<number>>(new Set())
+  const [ajusteMasivoModal, setAjusteMasivoModal] = useState(false)
+  const [ajusteMasivoData, setAjusteMasivoData] = useState({ alquiler_delta: '', nota_override: '' })
 
   // Historial de pagos
   const [historial, setHistorial] = useState<HistorialPagoItem[]>([])
@@ -124,6 +130,48 @@ export default function Dashboard() {
     cargar()
   }
 
+  async function guardarAjusteMasivo() {
+    if (seleccionados.size === 0) return
+    const delta = Number(ajusteMasivoData.alquiler_delta)
+    const promises = Array.from(seleccionados).map(idReg => {
+      const item = visibles.find(i => i.registro.id_registros_mensuales === idReg)
+      if (!item) return Promise.resolve()
+      const params: Record<string, string | number> = {
+        alquiler_override: item.registro.alquiler_calculado + delta,
+      }
+      if (ajusteMasivoData.nota_override !== '') params.nota_override = ajusteMasivoData.nota_override
+      return api.post(`/dashboard/registros/${idReg}/override`, null, { params })
+    })
+    await Promise.all(promises)
+    setAjusteMasivoModal(false)
+    setModoSeleccion(false)
+    setSeleccionados(new Set())
+    setAjusteMasivoData({ alquiler_delta: '', nota_override: '' })
+    cargar()
+  }
+
+  function toggleSeleccion(idReg: number) {
+    setSeleccionados(prev => {
+      const next = new Set(prev)
+      if (next.has(idReg)) next.delete(idReg)
+      else next.add(idReg)
+      return next
+    })
+  }
+
+  function toggleTodos() {
+    if (seleccionados.size === visibles.length) {
+      setSeleccionados(new Set())
+    } else {
+      setSeleccionados(new Set(visibles.map(i => i.registro.id_registros_mensuales)))
+    }
+  }
+
+  function cancelarModoSeleccion() {
+    setModoSeleccion(false)
+    setSeleccionados(new Set())
+  }
+
   function handleImprimir() { window.print() }
 
   const visibles = items.filter(i => !i.registro.pagado)
@@ -145,6 +193,35 @@ export default function Dashboard() {
             {showPagados ? <EyeOff size={16} /> : <Eye size={16} />}
             {showPagados ? 'Ocultar pagados' : 'Mostrar pagados'}
           </button>
+          {!showPagados && !modoSeleccion && (
+            <button
+              onClick={() => setModoSeleccion(true)}
+              className="flex items-center gap-2 px-3 py-2 text-sm bg-yellow-50 border border-yellow-300 text-yellow-700 rounded-lg hover:bg-yellow-100 transition"
+            >
+              <ListChecks size={16} /> Ajuste masivo
+            </button>
+          )}
+          {!showPagados && modoSeleccion && (
+            <>
+              <button
+                onClick={cancelarModoSeleccion}
+                className="flex items-center gap-2 px-3 py-2 text-sm bg-white border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-100 transition"
+              >
+                <XCircle size={16} /> Cancelar selección
+              </button>
+              <button
+                onClick={() => {
+                  if (seleccionados.size === 0) return
+                  setAjusteMasivoData({ alquiler_delta: '', nota_override: '' })
+                  setAjusteMasivoModal(true)
+                }}
+                disabled={seleccionados.size === 0}
+                className="flex items-center gap-2 px-3 py-2 text-sm bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                <SlidersHorizontal size={16} /> Ajustar seleccionados ({seleccionados.size})
+              </button>
+            </>
+          )}
           <button onClick={handleImprimir} className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition">
             <Printer size={16} /> Imprimir
           </button>
@@ -319,6 +396,17 @@ export default function Dashboard() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
+                {modoSeleccion && (
+                  <th className="px-4 py-3 print:hidden">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded accent-yellow-500 cursor-pointer"
+                      checked={seleccionados.size === visibles.length && visibles.length > 0}
+                      onChange={toggleTodos}
+                      title="Seleccionar todos"
+                    />
+                  </th>
+                )}
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Depto</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Inquilino</th>
                 <th className="text-right px-4 py-3 font-semibold text-gray-600">Alquiler</th>
@@ -337,7 +425,22 @@ export default function Dashboard() {
                 const alq = reg.alquiler_override ?? reg.alquiler_calculado
                 const exp = reg.expensa_override ?? reg.expensa_calculada
                 return (
-                  <tr key={reg.id_registros_mensuales} className="hover:bg-gray-50">
+                  <tr
+                    key={reg.id_registros_mensuales}
+                    className={`hover:bg-gray-50 ${modoSeleccion && seleccionados.has(reg.id_registros_mensuales) ? 'bg-yellow-50' : ''}`}
+                    onClick={modoSeleccion ? () => toggleSeleccion(reg.id_registros_mensuales) : undefined}
+                    style={modoSeleccion ? { cursor: 'pointer' } : undefined}
+                  >
+                    {modoSeleccion && (
+                      <td className="px-4 py-3 print:hidden" onClick={e => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 rounded accent-yellow-500 cursor-pointer"
+                          checked={seleccionados.has(reg.id_registros_mensuales)}
+                          onChange={() => toggleSeleccion(reg.id_registros_mensuales)}
+                        />
+                      </td>
+                    )}
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-800">
                         {formatDepto(item.departamento?.piso, item.departamento?.codigo)}
@@ -450,6 +553,98 @@ export default function Dashboard() {
           )}
         </div>
       )}
+
+      {/* Modal ajuste masivo */}
+      {ajusteMasivoModal && (() => {
+        const delta = ajusteMasivoData.alquiler_delta !== '' ? Number(ajusteMasivoData.alquiler_delta) : 0
+        const itemsSeleccionados = visibles.filter(i => seleccionados.has(i.registro.id_registros_mensuales))
+        return (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 print:hidden">
+            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
+                  <ListChecks size={20} className="text-yellow-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-gray-800">Ajuste masivo</h3>
+                  <p className="text-sm text-gray-500">{itemsSeleccionados.length} pago{itemsSeleccionados.length !== 1 ? 's' : ''} seleccionado{itemsSeleccionados.length !== 1 ? 's' : ''}</p>
+                </div>
+              </div>
+
+              {/* Lista de afectados */}
+              <div className="mb-4 max-h-36 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
+                {itemsSeleccionados.map(i => (
+                  <div key={i.registro.id_registros_mensuales} className="flex items-center justify-between px-3 py-2 text-sm">
+                    <span className="font-medium text-gray-700">{formatDepto(i.departamento?.piso, i.departamento?.codigo)}</span>
+                    <span className="text-gray-500">{i.inquilino?.nombre_apellido}</span>
+                    {delta !== 0 && ajusteMasivoData.alquiler_delta !== '' ? (
+                      <span className="flex items-center gap-1.5 font-mono text-xs font-semibold">
+                        <span className="text-gray-800">{formatMoneda(i.registro.alquiler_calculado)}</span>
+                        <span className={delta >= 0 ? 'text-green-600' : 'text-red-600'}>
+                          → {formatMoneda(i.registro.alquiler_calculado + delta)}
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="font-mono text-xs text-gray-400">{formatMoneda(i.registro.alquiler_calculado)}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-sm text-gray-500 mb-3">
+                Ingresá el monto a <strong>sumar o restar</strong> al alquiler base de cada pago seleccionado.
+                Usá un número negativo para aplicar un descuento.
+              </p>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ajuste de alquiler
+                  </label>
+                  <input
+                    type="number"
+                    className="w-full border rounded-lg px-3 py-2 text-sm"
+                    value={ajusteMasivoData.alquiler_delta}
+                    onChange={e => setAjusteMasivoData(d => ({ ...d, alquiler_delta: e.target.value }))}
+                    placeholder="Ej: 50000 o -30000"
+                  />
+                  {ajusteMasivoData.alquiler_delta !== '' && (
+                    <p className={`text-xs mt-1 ${delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      Se {delta >= 0 ? 'sumará' : 'restará'} {formatMoneda(Math.abs(delta))} al alquiler de cada pago seleccionado.
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nota (opcional)</label>
+                  <input
+                    type="text"
+                    className="w-full border rounded-lg px-3 py-2 text-sm"
+                    value={ajusteMasivoData.nota_override}
+                    onChange={e => setAjusteMasivoData(d => ({ ...d, nota_override: e.target.value }))}
+                    placeholder="Motivo del ajuste..."
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 justify-end mt-5">
+                <button
+                  onClick={() => setAjusteMasivoModal(false)}
+                  className="px-4 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={guardarAjusteMasivo}
+                  disabled={ajusteMasivoData.alquiler_delta === ''}
+                  className="px-4 py-2 text-sm bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Aplicar ajuste
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Override Modal */}
       {overrideModal && (() => {
