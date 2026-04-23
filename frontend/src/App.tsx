@@ -5,6 +5,7 @@ import Inquilinos from './pages/Inquilinos'
 import Contratos from './pages/Contratos'
 import Servicios from './pages/Servicios'
 import Aumentos from './pages/Aumentos'
+import deptoManagerLogo from './icons/DeptoManager.svg'
 import {
   LayoutDashboard,
   Building2,
@@ -29,10 +30,10 @@ function App() {
       <div className="flex min-h-screen bg-gray-50">
         <aside className="w-60 bg-slate-800 text-white flex flex-col shadow-lg">
           <div className="px-6 py-5 border-b border-slate-700">
-            <h1 className="text-lg font-bold text-white leading-tight">
-              🏠 Gestor
-            </h1>
-            <p className="text-slate-400 text-xs mt-0.5">Alquileres</p>
+            <div className="flex items-center gap-2.5">
+              <img src={deptoManagerLogo} alt="Depto Manager" className="w-8 h-8 invert" />
+              <h1 className="text-lg font-bold text-white leading-tight">Depto Manager</h1>
+            </div>
           </div>
           <nav className="flex-1 px-3 py-4 space-y-1">
             {navItems.map(({ to, label, icon: Icon }) => (
@@ -54,7 +55,7 @@ function App() {
             ))}
           </nav>
           <div className="px-4 py-3 border-t border-slate-700 text-xs text-slate-500">
-            Gestor de Alquileres - v1.0
+            Depto Manager - v1.0
           </div>
         </aside>
 
