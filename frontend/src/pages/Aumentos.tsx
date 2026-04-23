@@ -75,6 +75,16 @@ export default function Aumentos() {
                   </div>
                 </div>
 
+                {p.requires_fecha_ultimo && (
+                  <div className="mt-3 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                    <AlertTriangle size={16} className="shrink-0 mt-0.5 text-amber-500" />
+                    <span>
+                      Este contrato ya lleva un tiempo en curso pero no tiene registrado el último aumento.
+                      Editá el contrato e indicá la fecha del último aumento para que el sistema calcule correctamente el próximo.
+                    </span>
+                  </div>
+                )}
+
                 {p.alquiler_nuevo && (
                   <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
                     <div className="bg-gray-50 rounded-lg p-3">

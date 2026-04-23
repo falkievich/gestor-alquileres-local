@@ -38,6 +38,7 @@ export interface Contrato {
   periodicidad_aumento_meses: number
   ultimo_aumento_anio?: number
   ultimo_aumento_mes?: number
+  fecha_ultimo_aumento?: string
   cobra_expensa: boolean
   cobra_agua: boolean
   cobra_luz: boolean
@@ -56,6 +57,7 @@ export interface ContratoCreate {
   cobra_expensa?: boolean
   cobra_agua?: boolean
   cobra_luz?: boolean
+  fecha_ultimo_aumento?: string
 }
 
 export interface RegistroMensual {
@@ -110,6 +112,7 @@ export interface AumentoItem {
     expensa_actual?: number
     expensa_nueva?: number
     porcentaje: number
+    requires_fecha_ultimo?: boolean
   }
   alerta?: string
 }

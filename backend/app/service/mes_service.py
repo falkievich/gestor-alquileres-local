@@ -72,14 +72,24 @@ def corresponde_aumento(contrato: Contrato, anio: int, mes: int) -> bool:
     if contrato.periodicidad_aumento_meses == 0:
         return False
 
-    if contrato.ultimo_aumento_anio is None or contrato.ultimo_aumento_mes is None:
-        # Primera vez: aumentar si han pasado N meses desde fecha_inicio
-        inicio = contrato.fecha_inicio
-        meses_desde_inicio = (anio - inicio.year) * 12 + (mes - inicio.month)
-        return meses_desde_inicio > 0 and meses_desde_inicio % contrato.periodicidad_aumento_meses == 0
-    else:
+    # Si el usuario indicó fecha_ultimo_aumento (contrato en curso), usar esa como base
+    if contrato.fecha_ultimo_aumento is not None:
+        base_anio = contrato.fecha_ultimo_aumento.year
+        base_mes = contrato.fecha_ultimo_aumento.month
+        meses_desde_base = (anio - base_anio) * 12 + (mes - base_mes)
+        return meses_desde_base >= contrato.periodicidad_aumento_meses
+
+    # Si el sistema ya aplicó algún aumento, usar ese registro
+    if contrato.ultimo_aumento_anio is not None and contrato.ultimo_aumento_mes is not None:
         meses_desde_ultimo = (anio - contrato.ultimo_aumento_anio) * 12 + (mes - contrato.ultimo_aumento_mes)
         return meses_desde_ultimo >= contrato.periodicidad_aumento_meses
+
+    # Sin historial: usar fecha_inicio como base (comportamiento original).
+    # Cubre tanto contratos nuevos como contratos cargados pocos días después de su inicio.
+    # Si el contrato es realmente antiguo, el usuario puede indicar fecha_ultimo_aumento para corregir la base.
+    inicio = contrato.fecha_inicio
+    meses_desde_inicio = (anio - inicio.year) * 12 + (mes - inicio.month)
+    return meses_desde_inicio > 0 and meses_desde_inicio % contrato.periodicidad_aumento_meses == 0
 
 
 def aplicar_aumento_si_corresponde(session: Session, contrato: Contrato, anio: int, mes: int) -> bool:
@@ -100,20 +110,30 @@ def aplicar_aumento_si_corresponde(session: Session, contrato: Contrato, anio: i
 
 
 def calcular_proximo_aumento(contrato: Contrato) -> Dict[str, Any]:
-    """Calcula el próximo aumento para un contrato activo."""
+    """Calcula el próximo aumento para un contrato activo.
+
+    Si el contrato es antiguo y no tiene ni fecha_ultimo_aumento ni historial del sistema,
+    devuelve requires_fecha_ultimo=True para que el frontend pida la fecha al usuario.
+    """
     if contrato.porcentaje_aumento == 0 or contrato.periodicidad_aumento_meses == 0:
-        return {"proximo_anio": None, "proximo_mes": None, "alquiler_actual": contrato.alquiler_base_actual, "alquiler_nuevo": None}
+        return {
+            "proximo_anio": None, "proximo_mes": None,
+            "alquiler_actual": contrato.alquiler_base_actual, "alquiler_nuevo": None,
+            "requires_fecha_ultimo": False,
+        }
 
-    hoy = date.today()
-
-    if contrato.ultimo_aumento_anio is None or contrato.ultimo_aumento_mes is None:
-        base_anio = contrato.fecha_inicio.year
-        base_mes = contrato.fecha_inicio.month
-    else:
+    # Determinar la base para calcular el próximo aumento (mismo orden que corresponde_aumento)
+    if contrato.fecha_ultimo_aumento is not None:
+        base_anio = contrato.fecha_ultimo_aumento.year
+        base_mes = contrato.fecha_ultimo_aumento.month
+    elif contrato.ultimo_aumento_anio is not None and contrato.ultimo_aumento_mes is not None:
         base_anio = contrato.ultimo_aumento_anio
         base_mes = contrato.ultimo_aumento_mes
+    else:
+        # Sin historial: usar fecha_inicio como base (igual que corresponde_aumento)
+        base_anio = contrato.fecha_inicio.year
+        base_mes = contrato.fecha_inicio.month
 
-    # Calcular próximo aumento
     total_meses = base_mes + contrato.periodicidad_aumento_meses
     proximo_anio = base_anio + (total_meses - 1) // 12
     proximo_mes = ((total_meses - 1) % 12) + 1
@@ -130,4 +150,5 @@ def calcular_proximo_aumento(contrato: Contrato) -> Dict[str, Any]:
         "expensa_actual": contrato.expensa_base_actual,
         "expensa_nueva": expensa_nueva,
         "porcentaje": contrato.porcentaje_aumento,
+        "requires_fecha_ultimo": False,
     }
