@@ -4,6 +4,28 @@
   aside, .print\:hidden { display: none !important; }
   main { width: 100% !important; }
   body { background: white !important; }
+
+  /* Aprovechar todo el ancho de la hoja en vertical */
+  @page {
+    margin: 8mm 6mm;
+  }
+
+  /* Quitar padding lateral de la página principal al imprimir */
+  main > div {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* La tabla ocupa todo el ancho disponible */
+  table {
+    width: 100% !important;
+  }
+
+  /* Celdas con menos padding horizontal para ganar espacio */
+  th, td {
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+  }
 }
 
 a:hover {

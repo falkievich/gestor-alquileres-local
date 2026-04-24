@@ -62,6 +62,7 @@ class Contrato(SQLModel, table=True):
     periodicidad_aumento_meses: int = Field(default=3)
     ultimo_aumento_anio: Optional[int] = None
     ultimo_aumento_mes: Optional[int] = None
+    fecha_ultimo_aumento: Optional[date] = Field(default=None, nullable=True)
     cobra_expensa: bool = Field(default=False)
     cobra_agua: bool = Field(default=False)
     cobra_luz: bool = Field(default=False)
@@ -81,6 +82,7 @@ class ContratoCreate(SQLModel):
     cobra_expensa: bool = False
     cobra_agua: bool = False
     cobra_luz: bool = False
+    fecha_ultimo_aumento: Optional[date] = None
 
 
 class ContratoUpdate(SQLModel):
@@ -93,6 +95,7 @@ class ContratoUpdate(SQLModel):
     cobra_expensa: Optional[bool] = None
     cobra_agua: Optional[bool] = None
     cobra_luz: Optional[bool] = None
+    fecha_ultimo_aumento: Optional[date] = None
 
 
 class ContratoRead(SQLModel):
@@ -109,6 +112,7 @@ class ContratoRead(SQLModel):
     periodicidad_aumento_meses: int
     ultimo_aumento_anio: Optional[int] = None
     ultimo_aumento_mes: Optional[int] = None
+    fecha_ultimo_aumento: Optional[date] = None
     cobra_expensa: bool
     cobra_agua: bool
     cobra_luz: bool

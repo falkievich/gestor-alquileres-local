@@ -39,6 +39,7 @@ const emptyForm: ContratoCreate = {
   cobra_expensa: false,
   cobra_agua: false,
   cobra_luz: false,
+  fecha_ultimo_aumento: undefined,
 }
 
 export default function Contratos() {
@@ -52,6 +53,7 @@ export default function Contratos() {
   const [archivoFile, setArchivoFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [fechaInicioBlocked, setFechaInicioBlocked] = useState(false)
+  const [contratoEnCurso, setContratoEnCurso] = useState(false)
   // Filtros
   const [filtroInq, setFiltroInq] = useState('')
   const [filtroDep, setFiltroDep] = useState('')
@@ -83,6 +85,7 @@ export default function Contratos() {
     setArchivoFile(null)
     setErrorMsg('')
     setFechaInicioBlocked(false)
+    setContratoEnCurso(false)
     setModal('crear')
   }
 
@@ -100,7 +103,9 @@ export default function Contratos() {
       cobra_expensa: c.cobra_expensa,
       cobra_agua: c.cobra_agua,
       cobra_luz: c.cobra_luz,
+      fecha_ultimo_aumento: c.fecha_ultimo_aumento,
     })
+    setContratoEnCurso(!!c.fecha_ultimo_aumento)
     setArchivoFile(null)
     setErrorMsg('')
     // Verificar si ya existen registros pagados para este contrato
@@ -402,6 +407,38 @@ export default function Contratos() {
                   placeholder="Por ejemplo: 3"
                 />
               </div>
+            </div>
+
+            {/* Contrato en curso */}
+            <div className="mt-4 p-4 rounded-xl border border-gray-200 bg-gray-50">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={contratoEnCurso}
+                  onChange={e => {
+                    setContratoEnCurso(e.target.checked)
+                    if (!e.target.checked) setForm(f => ({ ...f, fecha_ultimo_aumento: undefined }))
+                  }}
+                />
+                ¿Este contrato ya lleva un tiempo en curso?
+              </label>
+              {contratoEnCurso && (
+                <div className="mt-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    ¿Cuándo fue el último aumento aplicado? *
+                  </label>
+                  <input
+                    type="date"
+                    className="w-full border rounded-lg px-3 py-2 text-sm"
+                    value={form.fecha_ultimo_aumento ?? ''}
+                    onChange={e => setForm(f => ({ ...f, fecha_ultimo_aumento: e.target.value || undefined }))}
+                  />
+                  <p className="mt-1.5 text-xs text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                    ℹ️ El sistema calculará el próximo aumento a partir de esta fecha + la periodicidad configurada.
+                    El monto actual que ingresaste se usará como base sin modificarse.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Checkboxes */}
