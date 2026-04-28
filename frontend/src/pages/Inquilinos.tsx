@@ -15,6 +15,15 @@ export default function Inquilinos() {
   const [filtroAnio, setFiltroAnio] = useState('')
   const [filtroMes, setFiltroMes] = useState('')
   const [form, setForm] = useState<InquilinoCreate>({ nombre_apellido: '', telefono: '', es_actual: true })
+  const [busqueda, setBusqueda] = useState('')
+
+  function normalizar(texto: string) {
+    return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  }
+
+  const inquilinosFiltrados = busqueda.trim()
+    ? inquilinos.filter(i => normalizar(i.nombre_apellido).includes(normalizar(busqueda.trim())))
+    : inquilinos
 
   async function cargar() {
     const res = await api.get('/inquilinos/')
@@ -37,7 +46,10 @@ export default function Inquilinos() {
   async function abrirContratos(inq: Inquilino) {
     setSelected(inq)
     const res = await api.get(`/inquilinos/${inq.id_inquilinos}/contratos`)
-    setContratosInq(res.data)
+    const ordenado = [...res.data].sort((a: { contrato: { fecha_inicio: string } }, b: { contrato: { fecha_inicio: string } }) =>
+      new Date(b.contrato.fecha_inicio).getTime() - new Date(a.contrato.fecha_inicio).getTime()
+    )
+    setContratosInq(ordenado)
     setModal('contratos')
   }
 
@@ -47,7 +59,11 @@ export default function Inquilinos() {
     if (filtroAnio) params.anio = filtroAnio
     if (filtroMes) params.mes = filtroMes
     const res = await api.get(`/inquilinos/${inq.id_inquilinos}/pagos`, { params })
-    setPagos(res.data)
+    const ordenado = [...res.data].sort((a: PagoItem, b: PagoItem) => {
+      if (b.registro.anio !== a.registro.anio) return b.registro.anio - a.registro.anio
+      return b.registro.mes - a.registro.mes
+    })
+    setPagos(ordenado)
     setModal('pagos')
   }
 
@@ -71,12 +87,21 @@ export default function Inquilinos() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Inquilinos</h2>
-        <button
-          onClick={abrirCrear}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
-        >
-          <Plus size={16} /> Nuevo inquilino
-        </button>
+        <div className="flex items-center gap-3">
+          <input
+            type="text"
+            placeholder="Buscar por nombre..."
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-blue-300"
+          />
+          <button
+            onClick={abrirCrear}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
+          >
+            <Plus size={16} /> Nuevo inquilino
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -90,7 +115,7 @@ export default function Inquilinos() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {inquilinos.map(inq => (
+            {inquilinosFiltrados.map(inq => (
               <tr key={inq.id_inquilinos} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-medium text-gray-800">{inq.nombre_apellido}</td>
                 <td className="px-4 py-3 text-gray-600">{inq.telefono || '-'}</td>
@@ -125,8 +150,10 @@ export default function Inquilinos() {
             ))}
           </tbody>
         </table>
-        {inquilinos.length === 0 && (
-          <div className="py-8 text-center text-gray-400">No hay inquilinos. Creá uno.</div>
+        {inquilinosFiltrados.length === 0 && (
+          <div className="py-8 text-center text-gray-400">
+            {busqueda.trim() ? 'No se encontraron inquilinos con ese nombre.' : 'No hay inquilinos. Creá uno.'}
+          </div>
         )}
       </div>
 

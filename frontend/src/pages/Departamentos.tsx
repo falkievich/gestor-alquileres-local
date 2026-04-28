@@ -40,7 +40,10 @@ export default function Departamentos() {
   async function abrirHistorial(dep: Departamento) {
     setSelected(dep)
     const res = await api.get(`/departamentos/${dep.id_departamentos}/historial`)
-    setHistorial(res.data)
+    const ordenado = [...res.data].sort((a: HistorialItem, b: HistorialItem) =>
+      new Date(b.contrato.fecha_inicio).getTime() - new Date(a.contrato.fecha_inicio).getTime()
+    )
+    setHistorial(ordenado)
     setModal('historial')
   }
 
@@ -50,7 +53,11 @@ export default function Departamentos() {
     if (filtroAnio) params.anio = filtroAnio
     if (filtroMes) params.mes = filtroMes
     const res = await api.get(`/departamentos/${dep.id_departamentos}/pagos`, { params })
-    setPagos(res.data)
+    const ordenado = [...res.data].sort((a: PagoItem, b: PagoItem) => {
+      if (b.registro.anio !== a.registro.anio) return b.registro.anio - a.registro.anio
+      return b.registro.mes - a.registro.mes
+    })
+    setPagos(ordenado)
     setModal('pagos')
   }
 

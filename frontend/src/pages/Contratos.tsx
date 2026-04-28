@@ -168,8 +168,10 @@ export default function Contratos() {
       .filter(c => c.estado === 'activo' && new Date(c.fecha_fin) >= new Date())
       .map(c => c.id_inquilinos)
   )
-  // En el selector solo mostrar inquilinos sin contrato activo vigente
-  const inquilinosDisponibles = inquilinos.filter(i => !idsConContratoActivo.has(i.id_inquilinos))
+  // En el selector solo mostrar inquilinos sin contrato activo vigente y con es_actual = true
+  const inquilinosDisponibles = inquilinos.filter(i =>
+    !idsConContratoActivo.has(i.id_inquilinos) && i.es_actual
+  )
 
   function ContratoRow({ c }: { c: Contrato }) {
     const dep = depNombre(c.id_departamentos)

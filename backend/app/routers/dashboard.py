@@ -53,7 +53,8 @@ def get_dashboard(session: Session = Depends(get_session)):
         # Actualizar total en DB
         if registro.total != total_calculado:
             from app.crud.registros import RegistroMensualUpdate
-            crud_registros.update_registro(session, registro.id_registros_mensuales, RegistroMensualUpdate(total=total_calculado))
+            crud_registros.update_registro(
+                session, registro.id_registros_mensuales, RegistroMensualUpdate(total=total_calculado))
             registro.total = total_calculado
 
         estado_servicios = calcular_estado_servicios(contrato, registro)
@@ -79,6 +80,48 @@ def get_dashboard(session: Session = Depends(get_session)):
     return resultado
 
 
+@router.get("/historial-pagos")
+def get_historial_pagos(
+    anio: Optional[int] = None,
+    mes: Optional[int] = None,
+    id_inquilinos: Optional[int] = None,
+    session: Session = Depends(get_session)
+):
+    from sqlmodel import select
+    from app.model.models import Departamento, Inquilino, Contrato
+
+    query = select(RegistroMensual).where(RegistroMensual.pagado == True)
+    if anio:
+        query = query.where(RegistroMensual.anio == anio)
+    if mes:
+        query = query.where(RegistroMensual.mes == mes)
+
+    registros = session.exec(query).all()
+
+    resultado = []
+    for reg in registros:
+        contrato = session.get(Contrato, reg.id_contratos)
+        if not contrato:
+            continue
+        if id_inquilinos and contrato.id_inquilinos != id_inquilinos:
+            continue
+        dep = session.get(Departamento, contrato.id_departamentos)
+        inq = session.get(Inquilino, contrato.id_inquilinos)
+        resultado.append({
+            "registro": reg,
+            "contrato": ContratoRead.model_validate(contrato),
+            "departamento": dep,
+            "inquilino": inq,
+            "anio": reg.anio,
+            "mes": reg.mes,
+            "total": reg.total,
+        })
+
+    # Orden: más nuevo al más viejo
+    resultado.sort(key=lambda x: (x["anio"], x["mes"]), reverse=True)
+    return resultado
+
+
 @router.post("/registros/{id_registro}/pagado")
 def marcar_pagado(id_registro: int, session: Session = Depends(get_session)):
     registro = session.get(RegistroMensual, id_registro)
@@ -89,7 +132,8 @@ def marcar_pagado(id_registro: int, session: Session = Depends(get_session)):
         raise HTTPException(status_code=404, detail="Contrato no encontrado")
     estado_servicios = calcular_estado_servicios(contrato, registro)
     if estado_servicios != "OK":
-        raise HTTPException(status_code=400, detail="No se puede marcar pagado: servicios pendientes")
+        raise HTTPException(
+            status_code=400, detail="No se puede marcar pagado: servicios pendientes")
     from app.crud.registros import RegistroMensualUpdate
     return crud_registros.update_registro(session, id_registro, RegistroMensualUpdate(pagado=True))
 
@@ -124,9 +168,11 @@ def override_registro(
         expensa_override=expensa_override,
         nota_override=nota_override,
     )
-    registro = crud_registros.update_registro(session, id_registro, update_data)
+    registro = crud_registros.update_registro(
+        session, id_registro, update_data)
 
     alq_efectivo = registro.alquiler_override if registro.alquiler_override is not None else registro.alquiler_calculado
     exp_efectiva = registro.expensa_override if registro.expensa_override is not None else registro.expensa_calculada
-    total_calculado = calcular_total(alq_efectivo, exp_efectiva, registro.agua, registro.luz)
+    total_calculado = calcular_total(
+        alq_efectivo, exp_efectiva, registro.agua, registro.luz)
     return crud_registros.update_registro(session, id_registro, RegistroMensualUpdate(total=total_calculado))

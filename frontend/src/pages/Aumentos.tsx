@@ -26,13 +26,13 @@ export default function Aumentos() {
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Vista de Aumentos</h2>
+        <h2 className="text-3xl font-bold text-gray-800">Vista de Aumentos</h2>
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-gray-500">Cargando...</div>
+        <div className="text-center py-12 text-gray-500 text-lg">Cargando...</div>
       ) : items.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">No hay contratos activos.</div>
+        <div className="text-center py-12 text-gray-400 text-lg">No hay contratos activos.</div>
       ) : (
         <div className="space-y-4">
           {items.map(item => {
@@ -42,53 +42,53 @@ export default function Aumentos() {
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-gray-800">
+                      <span className="font-bold text-gray-800 text-base">
                         {item.departamento?.piso} {item.departamento?.codigo}
                       </span>
-                      <span className="text-gray-500">—</span>
-                      <span className="text-gray-700">{item.inquilino?.nombre_apellido}</span>
+                      <span className="text-gray-500 text-base">—</span>
+                      <span className="text-gray-700 text-base">{item.inquilino?.nombre_apellido}</span>
                       {item.alerta === 'Vencido' && (
-                        <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold">
-                          <XCircle size={12} /> Vencido
+                        <span className="flex items-center gap-1 text-sm px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold">
+                          <XCircle size={14} /> Vencido
                         </span>
                       )}
                       {item.alerta === 'Por vencer' && (
-                        <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 font-semibold">
-                          <AlertTriangle size={12} /> Por vencer
+                        <span className="flex items-center gap-1 text-sm px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 font-semibold">
+                          <AlertTriangle size={14} /> Por vencer
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-sm text-gray-500 mt-1">
                       Vence: {formatFecha(item.contrato.fecha_fin)} · Aumento: {item.contrato.porcentaje_aumento}% cada {item.contrato.periodicidad_aumento_meses} meses
                     </p>
                   </div>
                   <div className="flex items-center gap-2 text-blue-600">
-                    <TrendingUp size={18} />
-                    <span className="font-semibold text-sm">Próximo: {proximoAumento(item)}</span>
+                    <TrendingUp size={22} />
+                    <span className="font-semibold text-base">Próximo: {proximoAumento(item)}</span>
                   </div>
                 </div>
 
                 {p.alquiler_nuevo && (
                   <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
                     <div className="bg-gray-50 rounded-lg p-3">
-                      <p className="text-xs text-gray-500 mb-1">Alquiler actual</p>
-                      <p className="font-bold text-gray-800">{formatMoneda(p.alquiler_actual)}</p>
+                      <p className="text-sm text-gray-500 mb-1">Alquiler actual</p>
+                      <p className="font-bold text-gray-800 text-base">{formatMoneda(p.alquiler_actual)}</p>
                     </div>
                     <div className="bg-blue-50 rounded-lg p-3">
-                      <p className="text-xs text-blue-600 mb-1">Alquiler nuevo</p>
-                      <p className="font-bold text-blue-700">{formatMoneda(p.alquiler_nuevo)}</p>
-                      <p className="text-xs text-blue-500 mt-0.5">+{formatMoneda((p.alquiler_nuevo ?? 0) - p.alquiler_actual)}</p>
+                      <p className="text-sm text-blue-600 mb-1">Alquiler nuevo</p>
+                      <p className="font-bold text-blue-700 text-base">{formatMoneda(p.alquiler_nuevo)}</p>
+                      <p className="text-sm text-blue-500 mt-0.5">+{formatMoneda((p.alquiler_nuevo ?? 0) - p.alquiler_actual)}</p>
                     </div>
                     {item.contrato.cobra_expensa && p.expensa_actual != null && (
                       <>
                         <div className="bg-gray-50 rounded-lg p-3">
-                          <p className="text-xs text-gray-500 mb-1">Expensa actual</p>
-                          <p className="font-bold text-gray-800">{formatMoneda(p.expensa_actual)}</p>
+                          <p className="text-sm text-gray-500 mb-1">Expensa actual</p>
+                          <p className="font-bold text-gray-800 text-base">{formatMoneda(p.expensa_actual)}</p>
                         </div>
                         <div className="bg-blue-50 rounded-lg p-3">
-                          <p className="text-xs text-blue-600 mb-1">Expensa nueva</p>
-                          <p className="font-bold text-blue-700">{formatMoneda(p.expensa_nueva)}</p>
-                          <p className="text-xs text-blue-500 mt-0.5">+{formatMoneda((p.expensa_nueva ?? 0) - (p.expensa_actual ?? 0))}</p>
+                          <p className="text-sm text-blue-600 mb-1">Expensa nueva</p>
+                          <p className="font-bold text-blue-700 text-base">{formatMoneda(p.expensa_nueva)}</p>
+                          <p className="text-sm text-blue-500 mt-0.5">+{formatMoneda((p.expensa_nueva ?? 0) - (p.expensa_actual ?? 0))}</p>
                         </div>
                       </>
                     )}
@@ -96,7 +96,7 @@ export default function Aumentos() {
                 )}
 
                 {!p.alquiler_nuevo && (
-                  <div className="mt-3 p-2 bg-gray-50 rounded text-sm text-gray-500">
+                  <div className="mt-3 p-2 bg-gray-50 rounded text-base text-gray-500">
                     Sin aumentos configurados para este contrato.
                   </div>
                 )}

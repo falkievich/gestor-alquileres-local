@@ -1,11 +1,21 @@
 import { useEffect, useState } from 'react'
 import api from '../lib/api'
-import type { DashboardItem } from '../lib/types'
+import type { DashboardItem, Inquilino } from '../lib/types'
 import { formatMoneda, MESES } from '../lib/types'
 import {
   CheckCircle2, AlertCircle, XCircle, Eye, EyeOff,
   RefreshCw, Printer, HardDriveDownload
 } from 'lucide-react'
+
+interface HistorialPagoItem {
+  registro: DashboardItem['registro']
+  contrato: DashboardItem['contrato']
+  departamento: DashboardItem['departamento']
+  inquilino: DashboardItem['inquilino']
+  anio: number
+  mes: number
+  total: number
+}
 
 export default function Dashboard() {
   const [items, setItems] = useState<DashboardItem[]>([])
@@ -16,6 +26,14 @@ export default function Dashboard() {
   const [overrideModal, setOverrideModal] = useState<DashboardItem | null>(null)
   const [overrideData, setOverrideData] = useState({ alquiler_override: '', expensa_override: '', nota_override: '' })
   const [confirmarPagoModal, setConfirmarPagoModal] = useState<DashboardItem | null>(null)
+
+  // Historial de pagos
+  const [historial, setHistorial] = useState<HistorialPagoItem[]>([])
+  const [historialLoading, setHistorialLoading] = useState(false)
+  const [filtroAnio, setFiltroAnio] = useState('')
+  const [filtroMes, setFiltroMes] = useState('')
+  const [filtroInquilino, setFiltroInquilino] = useState('')
+  const [inquilinos, setInquilinos] = useState<Inquilino[]>([])
 
   async function cargar() {
     setLoading(true)
@@ -30,7 +48,29 @@ export default function Dashboard() {
     }
   }
 
+  async function cargarHistorial() {
+    setHistorialLoading(true)
+    try {
+      const params: Record<string, string> = {}
+      if (filtroAnio) params.anio = filtroAnio
+      if (filtroMes) params.mes = filtroMes
+      if (filtroInquilino) params.id_inquilinos = filtroInquilino
+      const res = await api.get('/dashboard/historial-pagos', { params })
+      setHistorial(res.data)
+    } finally {
+      setHistorialLoading(false)
+    }
+  }
+
   useEffect(() => { cargar() }, [])
+
+  useEffect(() => {
+    api.get('/inquilinos/').then(res => setInquilinos(res.data))
+  }, [])
+
+  useEffect(() => {
+    if (showPagados) cargarHistorial()
+  }, [showPagados])
 
   async function marcarPagado(id: number) {
     await api.post(`/dashboard/registros/${id}/pagado`)
@@ -66,7 +106,7 @@ export default function Dashboard() {
 
   function handleImprimir() { window.print() }
 
-  const visibles = showPagados ? items : items.filter(i => !i.registro.pagado)
+  const visibles = items.filter(i => !i.registro.pagado)
   const mesActual = items.length > 0 ? `${MESES[items[0].mes - 1]} ${items[0].anio}` : ''
 
   return (
@@ -74,8 +114,8 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6 print:hidden">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Dashboard</h2>
-          {mesActual && <p className="text-gray-500 text-sm mt-1">Mes actual: {mesActual}</p>}
+          <h2 className="text-2xl font-bold text-gray-800">{showPagados ? 'Historial de pagos' : 'Dashboard'}</h2>
+          {!showPagados && mesActual && <p className="text-gray-500 text-sm mt-1">Mes actual: {mesActual}</p>}
         </div>
         <div className="flex gap-2 flex-wrap justify-end">
           <button
@@ -111,6 +151,124 @@ export default function Dashboard() {
 
       {loading ? (
         <div className="text-center py-12 text-gray-500">Cargando...</div>
+      ) : showPagados ? (
+        /* ── VISTA HISTORIAL DE PAGOS ── */
+        <div>
+          {/* Barra de filtros */}
+          <div className="flex flex-wrap gap-3 mb-4 items-end print:hidden">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-500">Año</label>
+              <select
+                className="border rounded-lg px-3 py-2 text-sm min-w-[110px]"
+                value={filtroAnio}
+                onChange={e => setFiltroAnio(e.target.value)}
+              >
+                <option value="">Todos</option>
+                {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-500">Mes</label>
+              <select
+                className="border rounded-lg px-3 py-2 text-sm min-w-[130px]"
+                value={filtroMes}
+                onChange={e => setFiltroMes(e.target.value)}
+              >
+                <option value="">Todos</option>
+                {MESES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-500">Inquilino</label>
+              <select
+                className="border rounded-lg px-3 py-2 text-sm min-w-[200px]"
+                value={filtroInquilino}
+                onChange={e => setFiltroInquilino(e.target.value)}
+              >
+                <option value="">Todos</option>
+                {inquilinos.map(inq => (
+                  <option key={inq.id_inquilinos} value={inq.id_inquilinos}>
+                    {inq.nombre_apellido}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={cargarHistorial}
+              className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            >
+              <RefreshCw size={14} /> Filtrar
+            </button>
+            {(filtroAnio || filtroMes || filtroInquilino) && (
+              <button
+                onClick={() => {
+                  setFiltroAnio('')
+                  setFiltroMes('')
+                  setFiltroInquilino('')
+                  setTimeout(cargarHistorial, 0)
+                }}
+                className="flex items-center gap-1 px-3 py-2 text-sm bg-white border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-100 transition"
+              >
+                <XCircle size={14} /> Limpiar filtros
+              </button>
+            )}
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            {historialLoading ? (
+              <div className="py-12 text-center text-gray-500">Cargando...</div>
+            ) : historial.length === 0 ? (
+              <div className="py-12 text-center text-gray-400">No hay pagos registrados con esos filtros.</div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Mes / Año</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Depto</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Inquilino</th>
+                    <th className="text-right px-4 py-3 font-semibold text-gray-600">Alquiler</th>
+                    <th className="text-right px-4 py-3 font-semibold text-gray-600">Expensa</th>
+                    <th className="text-right px-4 py-3 font-semibold text-gray-600">Agua</th>
+                    <th className="text-right px-4 py-3 font-semibold text-gray-600">Luz</th>
+                    <th className="text-center px-4 py-3 font-semibold text-gray-600">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {historial.map(h => {
+                    const reg = h.registro
+                    const alq = reg.alquiler_override ?? reg.alquiler_calculado
+                    const exp = reg.expensa_override ?? reg.expensa_calculada
+                    return (
+                      <tr key={reg.id_registros_mensuales} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <span className="font-semibold text-gray-800">{MESES[h.mes - 1]}</span>
+                          <span className="text-gray-500 ml-1">{h.anio}</span>
+                        </td>
+                        <td className="px-4 py-3 font-medium text-gray-800">
+                          {h.departamento?.piso} {h.departamento?.codigo}
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">{h.inquilino?.nombre_apellido}</td>
+                        <td className="px-4 py-3 text-right font-mono">{formatMoneda(alq)}</td>
+                        <td className="px-4 py-3 text-right font-mono">
+                          {h.contrato.cobra_expensa ? formatMoneda(exp) : <span className="text-gray-400">-</span>}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono">
+                          {h.contrato.cobra_agua ? (reg.agua != null ? formatMoneda(reg.agua) : <span className="text-gray-400">-</span>) : <span className="text-gray-400">-</span>}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono">
+                          {h.contrato.cobra_luz ? (reg.luz != null ? formatMoneda(reg.luz) : <span className="text-gray-400">-</span>) : <span className="text-gray-400">-</span>}
+                        </td>
+                        <td className="px-4 py-3 text-center font-bold font-mono text-green-700">{formatMoneda(h.total)}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
       ) : items.length === 0 ? (
         <div className="text-center py-12 text-gray-400">
           No hay contratos activos para el mes actual.
@@ -184,9 +342,14 @@ export default function Dashboard() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       {reg.pagado ? (
-                        <span className="inline-flex items-center gap-1 text-blue-600 text-xs font-semibold">
-                          <CheckCircle2 size={14} /> Pagado
-                        </span>
+                        <div className="inline-flex flex-col items-center gap-0.5">
+                          <span className="inline-flex items-center gap-1 text-blue-600 text-xs font-semibold">
+                            <CheckCircle2 size={14} /> Pagado
+                          </span>
+                          <span className="text-xs text-blue-400">
+                            {MESES[item.mes - 1]} {item.anio}
+                          </span>
+                        </div>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-gray-400 text-xs font-semibold">
                           <XCircle size={14} /> No pagado
@@ -234,7 +397,7 @@ export default function Dashboard() {
 
           {visibles.length === 0 && !loading && (
             <div className="py-8 text-center text-gray-400">
-              {showPagados ? 'No hay cobros este mes.' : 'Todos los cobros están pagados. Activá "Mostrar pagados" para verlos.'}
+              Todos los cobros del mes están pagados. Usá "Historial de pagos" para verlos.
             </div>
           )}
         </div>
