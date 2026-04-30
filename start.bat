@@ -1,17 +1,21 @@
 @echo off
-TITLE Depto Manager
-SET ROOT=%~dp0
+echo.
+echo  ========================================
+echo   Depto Manager - Iniciando...
+echo  ========================================
+echo.
+echo  Iniciando servidor en http://127.0.0.1:8000
+echo  El navegador se abrira automaticamente...
+echo.
+echo  Para cerrar el programa, cierra esta ventana.
+echo.
 
-echo.
-echo  ========================================
-echo   Depto Manager — Iniciando...
-echo  ========================================
-echo.
+SET ROOT=%~dp0
 
 REM Verificar que el Python embebido existe
 IF NOT EXIST "%ROOT%python\python.exe" (
     echo  [ERROR] No se encontro python\python.exe
-    echo  Ejecuta setup.bat primero o descarga Python embebido.
+    echo  Descarga Python embebido y extraelo en la carpeta python\
     pause
     exit /b 1
 )
@@ -24,14 +28,13 @@ IF NOT EXIST "%ROOT%frontend\dist\index.html" (
     echo.
 )
 
-echo  Iniciando servidor en http://127.0.0.1:8000
-echo  El navegador se abrira automaticamente...
-echo.
-echo  Para cerrar el programa, cierra esta ventana.
-echo.
-
-REM Ejecutar backend con Python embebido
+REM Ir a la carpeta backend para que Python encuentre el modulo "app"
 cd /d "%ROOT%backend"
-"%ROOT%python\python.exe" app\main.py
+
+REM Abrir el navegador despues de 2 segundos (en segundo plano)
+start "" cmd /c "timeout /t 2 >nul && start http://127.0.0.1:8000"
+
+REM Ejecutar uvicorn con el Python embebido
+"%ROOT%python\python.exe" -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 pause
