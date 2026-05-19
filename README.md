@@ -1,11 +1,83 @@
 # Depto Manager
 
-Depto Manager es una aplicación de escritorio para gestionar alquileres de departamentos.
-Permite llevar el control de inquilinos, contratos, cobros mensuales, servicios y aumentos
-desde una interfaz sencilla que se abre directamente en el navegador.
+Depto Manager es una aplicación de escritorio web que facilita la gestión de alquileres de departamentos en entornos locales. Está pensada para administradores, encargados o propietarios que necesiten llevar control de inquilinos, contratos, cobros mensuales, servicios y aumentos sin depender de servicios externos ni instalaciones complejas.
 
-No requiere internet ni instalación de programas adicionales.
-Todo se guarda localmente en la computadora.
+---
+
+## Objetivo
+
+Proveer una herramienta simple, portable y confiable para:
+- Registrar y consultar inquilinos y departamentos.
+- Registrar contratos (vigentes y finalizados) y adjuntar el archivo del contrato.
+- Calcular automáticamente el cobro mensual (alquiler + expensas + agua + luz) por contrato.
+- Marcar cobros como pagados y mantener un historial de pagos.
+- Cargar los valores de servicios (agua/luz) por mes y aplicarlos al cobro mensual.
+- Gestionar aumentos periódicos aplicando porcentajes y fechas de último aumento.
+- Generar backups locales del archivo de base de datos.
+
+La aplicación está diseñada para funcionar totalmente offline y ser distribuida como un paquete portable en Windows.
+
+---
+
+## Qué problemas resuelve / cómo ayuda
+
+- Evita llevar registros en papel o planillas dispersas: centraliza contratos, pagos y servicios.
+- Automatiza cálculos recurrentes: evita errores manuales al calcular aumentos y totales mensuales.
+- Facilita la auditoría: el historial de pagos y los backups permiten recuperar información ante errores.
+- Reduce fricción técnica para el cliente: se entrega como una carpeta portable que se ejecuta con doble clic (no requiere instalar Python/Node globalmente).
+
+---
+
+## Quick start (desarrollo)
+
+Recomendado para desarrolladores que quieran ejecutar o modificar el proyecto.
+
+- Backend (desarrollo):
+  - Abrir terminal y ejecutar:
+
+    cd backend
+    .venv\Scripts\uvicorn.exe app.main:app --reload --port 8000
+
+  - La API estará en `http://localhost:8000` y la documentación automática en `http://localhost:8000/docs`.
+
+- Frontend (desarrollo):
+  - Abrir terminal y ejecutar:
+
+    cd frontend
+    npm run dev
+
+  - El servidor de desarrollo de Vite suele correr en `http://localhost:5173`.
+
+- Build del frontend (producción):
+  - Desde la carpeta raíz ejecutar `build-frontend.bat` (o manualmente `cd frontend && npm run build`).
+
+- Ejecutable portable (cliente):
+  - Para probar la distribución portable usar `start.bat` en la carpeta raíz. Ese script arranca el backend embebido y abre el navegador en la UI.
+
+---
+
+## Estructura del proyecto (resumen)
+
+- `backend/` — código del servidor FastAPI
+  - `app/main.py` — aplicación FastAPI, sirve la API y el frontend build en modo portable
+  - `app/db.py` — conexión y rutas relativas a la base de datos
+  - `app/routers/` — endpoints por área (contratos, inquilinos, dashboard, servicios, aumentos, backup)
+  - `requirements.txt` — dependencias de Python
+
+- `frontend/` — código cliente (React + TypeScript)
+  - `src/` — código fuente React (páginas, componentes, llamadas a API en `lib/api.ts`)
+  - `package.json`, `vite.config.ts` — configuración del proyecto frontend
+  - `build-frontend.bat` — script para construir el `dist` listo para servirse
+
+- `base_de_datos/` — ubicación por defecto del archivo SQLite
+  - `alquileres.sqlite` — base de datos principal usada por la aplicación
+
+- `backups/` — carpeta donde la aplicación guarda backups generados desde la UI
+
+- Scripts de conveniencia en la raíz:
+  - `start.bat` — inicia la aplicación en modo portable (usa Python embebido)
+  - `update.bat` — procedimiento de actualización del paquete portable
+  - `setup.ps1` — script de preparación para el empaquetado
 
 ---
 
@@ -90,5 +162,18 @@ Desde acá podés:
 ## Base de datos
 
 Todos los datos se guardan en la carpeta `base_de_datos/alquileres.sqlite`.
-Para hacer un backup manual, copiá ese archivo a otro lugar.
-El sistema también incluye un botón de Backup en el Dashboard para hacerlo desde la interfaz.
+
+- El motor es SQLite (archivo local) — no requiere servidor externo.
+- La aplicación incluye un mecanismo para crear backups desde el Dashboard; los
+  archivos se guardan en la carpeta `backups/` con nombre `alquileres_YYYY-MM-DD_HH-mm.sqlite`.
+
+---
+
+## Desarrollo y pruebas
+
+- Revisá los endpoints en `backend/app/routers/` y las páginas en `frontend/src/pages/`.
+- Para ejecutar tests (si se agregan), crear un entorno virtual en `backend/.venv` y usar pytest.
+
+---
+
+Si necesitás que incluya secciones adicionales (ej. guía de empaquetado paso a paso, lista de comandos de mantenimiento o ejemplos de API), decímelo y lo agrego.
