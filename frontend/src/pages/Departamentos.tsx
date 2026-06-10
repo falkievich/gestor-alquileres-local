@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import api from '../lib/api'
 import type { Departamento, DepartamentoCreate, HistorialItem, PagoItem } from '../lib/types'
 import { PISOS, MESES, formatMoneda, formatFecha } from '../lib/types'
-import { Plus, Pencil, Trash2, History, X, CreditCard, Building2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, History, X, CreditCard, Building2, Filter } from 'lucide-react'
 
 function formatDepto(piso: string | undefined, codigo: string | undefined) {
   if (!piso || !codigo) return `${piso ?? ''} ${codigo ?? ''}`.trim()
@@ -315,9 +315,9 @@ export default function Departamentos() {
               </select>
               <button
                 onClick={() => abrirPagos(selected)}
-                className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium bg-slate-700 text-white rounded-lg hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300 transition"
               >
-                Filtrar
+                <Filter size={14} /> Filtrar
               </button>
             </div>
             {pagos.length === 0 ? (

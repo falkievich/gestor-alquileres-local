@@ -234,7 +234,10 @@ function HistorialAumentos({
           <option value="">Todos los meses</option>
           {MESES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
         </select>
-        <button onClick={aplicar} className="flex items-center gap-2 px-4 py-2 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-800">
+        <button
+          onClick={aplicar}
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium bg-slate-700 text-white rounded-lg hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300 transition"
+        >
           <Filter size={14} /> Filtrar
         </button>
         {(filtroInq || filtroAnio || filtroMes) && (

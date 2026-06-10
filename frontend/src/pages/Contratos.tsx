@@ -303,7 +303,12 @@ export default function Contratos() {
           <option value="">Todos los departamentos</option>
           {departamentos.map(d => <option key={d.id_departamentos} value={d.id_departamentos}>{formatDepto(d.piso, d.codigo)}</option>)}
         </select>
-        <button onClick={cargar} className="px-4 py-2 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-800">Buscar</button>
+        <button
+          onClick={cargar}
+          className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium bg-slate-700 text-white rounded-lg hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300 transition"
+        >
+          Buscar
+        </button>
       </div>
 
       {/* Tabla según tab activa */}
