@@ -16,6 +16,7 @@ export default function Inquilinos() {
   const [filtroMes, setFiltroMes] = useState('')
   const [form, setForm] = useState<InquilinoCreate>({ nombre_apellido: '', telefono: '', es_actual: true })
   const [busqueda, setBusqueda] = useState('')
+  const [errorMsg, setErrorMsg] = useState('')
 
   function normalizar(texto: string) {
     return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -34,12 +35,14 @@ export default function Inquilinos() {
 
   function abrirCrear() {
     setForm({ nombre_apellido: '', telefono: '', es_actual: true })
+    setErrorMsg('')
     setModal('crear')
   }
 
   function abrirEditar(inq: Inquilino) {
     setSelected(inq)
     setForm({ nombre_apellido: inq.nombre_apellido, telefono: inq.telefono ?? '', es_actual: inq.es_actual })
+    setErrorMsg('')
     setModal('editar')
   }
 
@@ -68,6 +71,11 @@ export default function Inquilinos() {
   }
 
   async function guardar() {
+    setErrorMsg('')
+    if (modal === 'crear' && !form.nombre_apellido.trim()) {
+      setErrorMsg('Nombre y apellido es obligatorio.')
+      return
+    }
     if (modal === 'crear') {
       await api.post('/inquilinos/', form)
     } else if (modal === 'editar' && selected) {
@@ -165,6 +173,7 @@ export default function Inquilinos() {
               <h3 className="font-bold text-lg">{modal === 'crear' ? 'Nuevo inquilino' : 'Editar inquilino'}</h3>
               <button onClick={() => setModal(null)}><X size={18} className="text-gray-500" /></button>
             </div>
+            {errorMsg && <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-600">{errorMsg}</div>}
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nombre y apellido *</label>

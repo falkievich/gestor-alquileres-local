@@ -66,6 +66,7 @@ class Contrato(SQLModel, table=True):
     cobra_expensa: bool = Field(default=False)
     cobra_agua: bool = Field(default=False)
     cobra_luz: bool = Field(default=False)
+    tipo_aumento: str = Field(default='MANUAL', max_length=20)
     archivo_blob: Optional[bytes] = Field(default=None)
     archivo_nombre: Optional[str] = Field(default=None, max_length=255)
 
@@ -82,6 +83,7 @@ class ContratoCreate(SQLModel):
     cobra_expensa: bool = False
     cobra_agua: bool = False
     cobra_luz: bool = False
+    tipo_aumento: str = 'MANUAL'
     fecha_ultimo_aumento: Optional[date] = None
 
 
@@ -95,6 +97,7 @@ class ContratoUpdate(SQLModel):
     cobra_expensa: Optional[bool] = None
     cobra_agua: Optional[bool] = None
     cobra_luz: Optional[bool] = None
+    tipo_aumento: Optional[str] = None
     fecha_ultimo_aumento: Optional[date] = None
 
 
@@ -116,13 +119,15 @@ class ContratoRead(SQLModel):
     cobra_expensa: bool
     cobra_agua: bool
     cobra_luz: bool
+    tipo_aumento: str = 'MANUAL'
     archivo_nombre: Optional[str] = None
 
 
 class RegistroMensual(SQLModel, table=True):
     __tablename__ = "registros_mensuales"
 
-    id_registros_mensuales: Optional[int] = Field(default=None, primary_key=True)
+    id_registros_mensuales: Optional[int] = Field(
+        default=None, primary_key=True)
     id_contratos: int = Field(foreign_key="contratos.id_contratos")
     anio: int
     mes: int
@@ -135,6 +140,8 @@ class RegistroMensual(SQLModel, table=True):
     luz: Optional[int] = None
     pagado: bool = Field(default=False)
     total: int
+    porcentaje_aumento_usado: Optional[float] = Field(
+        default=None, nullable=True)
 
 
 class RegistroMensualCreate(SQLModel):
@@ -146,6 +153,7 @@ class RegistroMensualCreate(SQLModel):
     agua: Optional[int] = None
     luz: Optional[int] = None
     total: int
+    porcentaje_aumento_usado: Optional[float] = None
 
 
 class RegistroMensualUpdate(SQLModel):
@@ -156,3 +164,4 @@ class RegistroMensualUpdate(SQLModel):
     luz: Optional[int] = None
     pagado: Optional[bool] = None
     total: Optional[int] = None
+    porcentaje_aumento_usado: Optional[float] = None

@@ -41,3 +41,4 @@ desktop.ini
 *.swp
 *.swo
 /python
+frontend/package-lock.json
