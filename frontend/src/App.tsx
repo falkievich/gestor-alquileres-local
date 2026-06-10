@@ -4,8 +4,8 @@ import Departamentos from './pages/Departamentos'
 import Inquilinos from './pages/Inquilinos'
 import Contratos from './pages/Contratos'
 import Servicios from './pages/Servicios'
-import Aumentos from './pages/Aumentos'
-import deptoManagerLogo from './icons/DeptoManager.svg'
+import Aumentos from './pages/Aumentos.tsx'
+import deptoManagerLogo from './icons/DeptoManager-2.svg'
 import {
   LayoutDashboard,
   Building2,
@@ -31,7 +31,7 @@ function App() {
         <aside className="w-60 bg-slate-800 text-white flex flex-col shadow-lg">
           <div className="px-6 py-5 border-b border-slate-700">
             <div className="flex items-center gap-2.5">
-              <img src={deptoManagerLogo} alt="Depto Manager" className="w-8 h-8 invert" />
+              <img src={deptoManagerLogo} alt="Depto Manager" className="w-15 h-15 invert" />
               <h1 className="text-lg font-bold text-white leading-tight">Depto Manager</h1>
             </div>
           </div>
