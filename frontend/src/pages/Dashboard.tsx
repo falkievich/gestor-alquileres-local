@@ -4,7 +4,7 @@ import type { DashboardItem, Inquilino } from '../lib/types'
 import { formatMoneda, MESES } from '../lib/types'
 import {
   CheckCircle2, AlertCircle, XCircle, Eye, EyeOff,
-  RefreshCw, Printer, HardDriveDownload, SlidersHorizontal, ListChecks
+  RefreshCw, Printer, HardDriveDownload, SlidersHorizontal, ListChecks, Filter
 } from 'lucide-react'
 
 function formatDepto(piso: string | undefined, codigo: string | undefined) {
@@ -294,9 +294,9 @@ export default function Dashboard() {
             </div>
             <button
               onClick={cargarHistorial}
-              className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium bg-slate-700 text-white rounded-lg hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300 transition"
             >
-              <RefreshCw size={14} /> Filtrar
+              <Filter size={14} /> Filtrar
             </button>
             {(filtroAnio || filtroMes || filtroInquilino) && (
               <button

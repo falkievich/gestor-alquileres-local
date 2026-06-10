@@ -8,7 +8,7 @@ from fastapi import HTTPException
 
 
 def get_contratos(session: Session) -> List[Contrato]:
-    return session.exec(select(Contrato)).all()
+    return session.exec(select(Contrato).order_by(Contrato.id_contratos.desc())).all()
 
 
 def get_contrato(session: Session, id: int) -> Optional[Contrato]:

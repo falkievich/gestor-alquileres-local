@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import api from '../lib/api'
 import type { Inquilino, InquilinoCreate, PagoItem } from '../lib/types'
 import { MESES, formatMoneda, formatFecha } from '../lib/types'
-import { Plus, Pencil, Trash2, X } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Filter } from 'lucide-react'
 
 type Modal = 'crear' | 'editar' | 'contratos' | 'pagos' | null
 
@@ -271,7 +271,12 @@ export default function Inquilinos() {
                 <option value="">Todos los meses</option>
                 {MESES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
               </select>
-              <button onClick={() => abrirPagos(selected)} className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Filtrar</button>
+              <button
+                onClick={() => abrirPagos(selected)}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium bg-slate-700 text-white rounded-lg hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300 transition"
+              >
+                <Filter size={14} /> Filtrar
+              </button>
             </div>
             {pagos.length === 0 ? (
               <p className="text-gray-400 text-sm">Sin registros.</p>
