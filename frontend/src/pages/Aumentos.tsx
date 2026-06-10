@@ -50,6 +50,7 @@ function ProximosAumentos({ items }: { items: AumentoItem[] }) {
         const p = item.proximo_aumento
         const esICL = (p.tipo_aumento ?? item.contrato.tipo_aumento) === 'ICL'
         const iclPendiente = esICL && p.icl_pendiente
+        const iclCalculado = esICL && !iclPendiente && !!p.icl_calculado
         const diferencia = p.alquiler_nuevo != null ? p.alquiler_nuevo - p.alquiler_actual : null
         const porcentaje = p.porcentaje
 
@@ -97,8 +98,10 @@ function ProximosAumentos({ items }: { items: AumentoItem[] }) {
                       <span className="text-gray-400">Sin aumento</span>
                     ) : iclPendiente ? (
                       <span className="flex items-center gap-1 justify-end text-amber-600"><Clock size={11} /> ICL pendiente</span>
+                    ) : iclCalculado ? (
+                      <span className="flex items-center gap-1 justify-end text-sky-700"><CheckCircle2 size={11} /> ICL calculado</span>
                     ) : (
-                      <span className="flex items-center gap-1 justify-end text-green-600"><CheckCircle2 size={11} /> Calculado</span>
+                      <span className="flex items-center gap-1 justify-end text-green-600"><CheckCircle2 size={11} /> Aplicado</span>
                     )}
                   </div>
                 </div>
@@ -179,6 +182,20 @@ function ProximosAumentos({ items }: { items: AumentoItem[] }) {
                       )}
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {iclCalculado && p.fecha_vigencia && (
+              <div className="px-5 pb-4">
+                <div className="p-3 bg-sky-50 border border-sky-200 rounded-lg text-sm">
+                  <div className="flex items-center gap-2 text-sky-800 font-semibold mb-1">
+                    <CheckCircle2 size={14} className="text-sky-600" />
+                    ICL calculado
+                  </div>
+                  <p className="text-sky-700 text-xs">
+                    Entrará en vigencia: <span className="font-semibold">{formatFecha(p.fecha_vigencia)}</span>
+                  </p>
                 </div>
               </div>
             )}

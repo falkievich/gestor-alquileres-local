@@ -125,6 +125,9 @@ export interface AumentoItem {
     icl_inicial?: number
     icl_final?: number
     icl_coeficiente?: number
+    icl_calculado?: boolean
+    icl_aplicable?: boolean
+    fecha_vigencia?: string
   }
   alerta?: string
 }
