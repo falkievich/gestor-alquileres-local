@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import api from '../lib/api'
 import type { Contrato, ContratoCreate, Departamento, Inquilino } from '../lib/types'
 import { formatMoneda, formatFecha } from '../lib/types'
-import { Plus, Pencil, X, Download, Lock } from 'lucide-react'
+import { Plus, Pencil, X, Download, Lock, FileText, Archive } from 'lucide-react'
 
 function formatDepto(piso: string | undefined, codigo: string | undefined) {
   if (!piso || !codigo) return `${piso ?? ''} ${codigo ?? ''}`.trim()
@@ -55,10 +55,12 @@ export default function Contratos() {
   const [uploading, setUploading] = useState(false)
   const [fechaInicioBlocked, setFechaInicioBlocked] = useState(false)
   const [contratoEnCurso, setContratoEnCurso] = useState(false)
+  // Tab activa
+  type TabContratos = 'activos' | 'finalizados'
+  const [tab, setTab] = useState<TabContratos>('activos')
   // Filtros
   const [filtroInq, setFiltroInq] = useState('')
   const [filtroDep, setFiltroDep] = useState('')
-  const [filtroEstado, setFiltroEstado] = useState('')
 
   async function cargar() {
     const [cRes, dRes, iRes] = await Promise.all([
@@ -75,7 +77,6 @@ export default function Contratos() {
     const p: Record<string, string> = {}
     if (filtroInq) p.id_inquilinos = filtroInq
     if (filtroDep) p.id_departamentos = filtroDep
-    if (filtroEstado) p.estado = filtroEstado
     return p
   }
 
@@ -264,6 +265,34 @@ export default function Contratos() {
         </button>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-1 mb-5 bg-gray-100 p-1 rounded-xl w-fit">
+        <button
+          onClick={() => setTab('activos')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            tab === 'activos' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <FileText size={15} />
+          Contratos activos
+          <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
+            tab === 'activos' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'
+          }`}>{activos.length}</span>
+        </button>
+        <button
+          onClick={() => setTab('finalizados')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            tab === 'finalizados' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <Archive size={15} />
+          Contratos finalizados
+          <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
+            tab === 'finalizados' ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-500'
+          }`}>{finalizados.length}</span>
+        </button>
+      </div>
+
       {/* Filtros */}
       <div className="flex flex-wrap gap-3 mb-6">
         <select className="border rounded-lg px-3 py-2 text-sm" value={filtroInq} onChange={e => setFiltroInq(e.target.value)}>
@@ -274,57 +303,53 @@ export default function Contratos() {
           <option value="">Todos los departamentos</option>
           {departamentos.map(d => <option key={d.id_departamentos} value={d.id_departamentos}>{formatDepto(d.piso, d.codigo)}</option>)}
         </select>
-        <select className="border rounded-lg px-3 py-2 text-sm" value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
-          <option value="">Todos los estados</option>
-          <option value="activo">Activo</option>
-          <option value="finalizado">Finalizado</option>
-        </select>
         <button onClick={cargar} className="px-4 py-2 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-800">Buscar</button>
       </div>
 
-      {/* Tabla Activos */}
-      <h3 className="font-semibold text-gray-700 mb-2">Contratos activos ({activos.length})</h3>
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600">Depto</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600">Inquilino</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600">Inicio</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600">Vence</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600">Alquiler</th>
-              <th className="text-center px-4 py-3 font-semibold text-gray-600">Estado</th>
-              <th className="text-center px-4 py-3 font-semibold text-gray-600">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {activos.map(c => <ContratoRow key={c.id_contratos} c={c} />)}
-          </tbody>
-        </table>
-        {activos.length === 0 && <div className="py-6 text-center text-gray-400">Sin contratos activos.</div>}
-      </div>
+      {/* Tabla según tab activa */}
+      {tab === 'activos' && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Depto</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Inquilino</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Inicio</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Vence</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Alquiler</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Estado</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {activos.map(c => <ContratoRow key={c.id_contratos} c={c} />)}
+            </tbody>
+          </table>
+          {activos.length === 0 && <div className="py-6 text-center text-gray-400">Sin contratos activos.</div>}
+        </div>
+      )}
 
-      {/* Tabla Finalizados */}
-      <h3 className="font-semibold text-gray-700 mb-2">Contratos finalizados ({finalizados.length})</h3>
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600">Depto</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600">Inquilino</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600">Inicio</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600">Vencimiento</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600">Alquiler</th>
-              <th className="text-center px-4 py-3 font-semibold text-gray-600">Estado</th>
-              <th className="text-center px-4 py-3 font-semibold text-gray-600">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {finalizados.map(c => <ContratoRow key={c.id_contratos} c={c} />)}
-          </tbody>
-        </table>
-        {finalizados.length === 0 && <div className="py-6 text-center text-gray-400">Sin contratos finalizados.</div>}
-      </div>
+      {tab === 'finalizados' && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Depto</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Inquilino</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Inicio</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Vencimiento</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Alquiler</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Estado</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {finalizados.map(c => <ContratoRow key={c.id_contratos} c={c} />)}
+            </tbody>
+          </table>
+          {finalizados.length === 0 && <div className="py-6 text-center text-gray-400">Sin contratos finalizados.</div>}
+        </div>
+      )}
 
       {/* Modal Crear/Editar */}
       {modal && (
@@ -410,7 +435,7 @@ export default function Contratos() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de aumento</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de aumento *</label>
                 <select
                   className="w-full border rounded-lg px-3 py-2 text-sm"
                   value={form.tipo_aumento ?? ''}
@@ -432,7 +457,7 @@ export default function Contratos() {
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Periodicidad aumento (meses)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Periodicidad aumento (meses) *</label>
                 <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
                   value={form.periodicidad_aumento_meses || ''}
                   onChange={e => setForm(f => ({ ...f, periodicidad_aumento_meses: e.target.value ? Number(e.target.value) : undefined }))}

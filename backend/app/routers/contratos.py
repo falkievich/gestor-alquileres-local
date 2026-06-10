@@ -42,6 +42,7 @@ def listar_contratos(
         query = query.where(Contrato.fecha_fin <= fecha_fin_hasta)
     if estado:
         query = query.where(Contrato.estado == estado)
+    query = query.order_by(Contrato.id_contratos.desc())
     return session.exec(query).all()
 
 
