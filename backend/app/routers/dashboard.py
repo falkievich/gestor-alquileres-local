@@ -33,12 +33,24 @@ def get_dashboard(session: Session = Depends(get_session)):
         if contrato.fecha_inicio > hoy:
             continue
 
-        # Aplicar aumento si corresponde antes de crear el registro
-        aplicar_aumento_si_corresponde(session, contrato, anio, mes)
+        # Aplicar aumento si corresponde antes de crear el registro.
+        # Retorna el porcentaje aplicado, o None si no hubo aumento.
+        porcentaje_aplicado = aplicar_aumento_si_corresponde(
+            session, contrato, anio, mes)
         # Refrescar contrato con posibles cambios
         session.refresh(contrato)
 
         registro = get_or_create_registro(session, contrato, anio, mes)
+
+        # Guardar porcentaje_aumento_usado en el registro si se aplicó un aumento
+        # y el registro todavía no tiene ese valor guardado.
+        if porcentaje_aplicado is not None and registro.porcentaje_aumento_usado is None:
+            from app.crud.registros import RegistroMensualUpdate as RMU
+            crud_registros.update_registro(
+                session, registro.id_registros_mensuales,
+                RMU(porcentaje_aumento_usado=porcentaje_aplicado)
+            )
+            registro.porcentaje_aumento_usado = porcentaje_aplicado
 
         alq_efectivo = registro.alquiler_override if registro.alquiler_override is not None else registro.alquiler_calculado
         exp_efectiva = registro.expensa_override if registro.expensa_override is not None else registro.expensa_calculada

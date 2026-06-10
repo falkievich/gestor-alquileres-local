@@ -42,6 +42,7 @@ export interface Contrato {
   cobra_expensa: boolean
   cobra_agua: boolean
   cobra_luz: boolean
+  tipo_aumento: 'MANUAL' | 'ICL'
   archivo_nombre?: string
 }
 
@@ -57,6 +58,7 @@ export interface ContratoCreate {
   cobra_expensa?: boolean
   cobra_agua?: boolean
   cobra_luz?: boolean
+  tipo_aumento?: 'MANUAL' | 'ICL'
   fecha_ultimo_aumento?: string
 }
 
@@ -74,6 +76,7 @@ export interface RegistroMensual {
   luz?: number
   pagado: boolean
   total: number
+  porcentaje_aumento_usado?: number
 }
 
 export interface DashboardItem {
@@ -111,10 +114,28 @@ export interface AumentoItem {
     alquiler_nuevo?: number
     expensa_actual?: number
     expensa_nueva?: number
-    porcentaje: number
+    porcentaje?: number
     requires_fecha_ultimo?: boolean
+    tipo_aumento?: 'MANUAL' | 'ICL'
+    // campos ICL
+    icl_pendiente?: boolean
+    icl_error?: string
+    ultima_fecha_disponible_bcra?: string
+    dias_faltantes?: number
+    icl_inicial?: number
+    icl_final?: number
+    icl_coeficiente?: number
   }
   alerta?: string
+}
+
+export interface AumentoHistorialItem {
+  registro: RegistroMensual
+  contrato: Contrato
+  departamento: Departamento
+  inquilino: Inquilino
+  alquiler_anterior: number | null
+  alquiler_nuevo: number
 }
 
 export const PISOS = ['Planta baja', 'Piso 1', 'Piso 2', 'Piso 3']
