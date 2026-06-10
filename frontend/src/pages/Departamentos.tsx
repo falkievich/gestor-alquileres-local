@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import api from '../lib/api'
 import type { Departamento, DepartamentoCreate, HistorialItem, PagoItem } from '../lib/types'
 import { PISOS, MESES, formatMoneda, formatFecha } from '../lib/types'
-import { Plus, Pencil, Trash2, History, X } from 'lucide-react'
+import { Plus, Pencil, Trash2, History, X, CreditCard, Building2 } from 'lucide-react'
 
 function formatDepto(piso: string | undefined, codigo: string | undefined) {
   if (!piso || !codigo) return `${piso ?? ''} ${codigo ?? ''}`.trim()
@@ -19,7 +19,7 @@ export default function Departamentos() {
   const [pagos, setPagos] = useState<PagoItem[]>([])
   const [filtroAnio, setFiltroAnio] = useState('')
   const [filtroMes, setFiltroMes] = useState('')
-  const [form, setForm] = useState<DepartamentoCreate>({ piso: PISOS[0], codigo: '', direccion: '' })
+  const [form, setForm] = useState<DepartamentoCreate>({ piso: '', codigo: '', direccion: '' })
   const [errorMsg, setErrorMsg] = useState('')
 
   async function cargar() {
@@ -30,7 +30,7 @@ export default function Departamentos() {
   useEffect(() => { cargar() }, [])
 
   function abrirCrear() {
-    setForm({ piso: PISOS[0], codigo: '', direccion: '' })
+    setForm({ piso: '', codigo: '', direccion: '' })
     setErrorMsg('')
     setModal('crear')
   }
@@ -68,6 +68,15 @@ export default function Departamentos() {
 
   async function guardar() {
     setErrorMsg('')
+    if (modal === 'crear') {
+      const errores: string[] = []
+      if (!form.piso.trim()) errores.push('Piso es obligatorio.')
+      if (!form.codigo.trim()) errores.push('Código es obligatorio.')
+      if (errores.length > 0) {
+        setErrorMsg(errores.join(' '))
+        return
+      }
+    }
     try {
       if (modal === 'crear') {
         await api.post('/departamentos/', form)
@@ -88,58 +97,104 @@ export default function Departamentos() {
     cargar()
   }
 
+  const libres = departamentos.filter(d => !d.esta_ocupado)
+  const ocupados = departamentos.filter(d => d.esta_ocupado)
+
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Departamentos</h2>
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">Departamentos</h2>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {departamentos.length} total · {ocupados.length} ocupados · {libres.length} libres
+          </p>
+        </div>
         <button
           onClick={abrirCrear}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
         >
           <Plus size={16} /> Nuevo departamento
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {departamentos.map(dep => (
-          <div key={dep.id_departamentos} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg font-bold text-gray-800 truncate">{formatDepto(dep.piso, dep.codigo)}</span>
-                </div>
-                {dep.direccion && <p className="text-xs text-gray-500 mt-0.5">{dep.direccion}</p>}
-                <span className={`inline-block mt-2 text-xs font-semibold px-2 py-0.5 rounded-full ${dep.esta_ocupado ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>
-                  {dep.esta_ocupado ? 'Ocupado' : 'Libre'}
-                </span>
-              </div>
-              <div className="flex gap-1 shrink-0">
-                <button onClick={() => abrirEditar(dep)} className="p-1.5 hover:bg-gray-100 rounded">
-                  <Pencil size={15} className="text-gray-500" />
-                </button>
-                <button onClick={() => eliminar(dep)} className="p-1.5 hover:bg-gray-100 rounded">
-                  <Trash2 size={15} className="text-red-400" />
-                </button>
-              </div>
-            </div>
-            <div className="flex gap-2 mt-3">
-              <button
-                onClick={() => abrirHistorial(dep)}
-                className="flex-1 text-xs py-1.5 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-1"
-              >
-                <History size={13} /> Historial
-              </button>
-              <button
-                onClick={() => abrirPagos(dep)}
-                className="flex-1 text-xs py-1.5 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-1"
-              >
-                Pagos
-              </button>
-            </div>
+      {/* Lista */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        {/* Cabecera */}
+        <div className="grid grid-cols-[2fr_2fr_1fr_auto] gap-4 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          <span>Departamento</span>
+          <span>Dirección</span>
+          <span>Estado</span>
+          <span className="w-32 text-right">Acciones</span>
+        </div>
+
+        {departamentos.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+            <Building2 size={40} className="mb-3 opacity-30" />
+            <p className="text-sm">No hay departamentos. Creá uno.</p>
           </div>
-        ))}
-        {departamentos.length === 0 && (
-          <div className="col-span-3 text-center py-12 text-gray-400">No hay departamentos. Creá uno.</div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {departamentos.map(dep => (
+              <div
+                key={dep.id_departamentos}
+                className="grid grid-cols-[2fr_2fr_1fr_auto] gap-4 px-4 py-3 items-center hover:bg-gray-50 transition-colors"
+              >
+                {/* Depto */}
+                <div className="min-w-0">
+                  <span className="font-semibold text-gray-800 text-sm">{formatDepto(dep.piso, dep.codigo)}</span>
+                </div>
+
+                {/* Dirección */}
+                <div className="min-w-0">
+                  {dep.direccion ? (
+                    <span className="text-sm text-gray-600 truncate block">{dep.direccion}</span>
+                  ) : (
+                    <span className="text-sm text-gray-300 italic">Sin dirección</span>
+                  )}
+                </div>
+
+                {/* Estado */}
+                <div>
+                  <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full ${dep.esta_ocupado ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${dep.esta_ocupado ? 'bg-red-500' : 'bg-green-500'}`} />
+                    {dep.esta_ocupado ? 'Ocupado' : 'Libre'}
+                  </span>
+                </div>
+
+                {/* Acciones */}
+                <div className="flex items-center gap-1 w-32 justify-end">
+                  <button
+                    onClick={() => abrirHistorial(dep)}
+                    className="flex items-center gap-1 px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                    title="Historial"
+                  >
+                    <History size={13} /> Historial
+                  </button>
+                  <button
+                    onClick={() => abrirPagos(dep)}
+                    className="flex items-center gap-1 px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                    title="Pagos"
+                  >
+                    <CreditCard size={13} /> Pagos
+                  </button>
+                  <button
+                    onClick={() => abrirEditar(dep)}
+                    className="p-1.5 hover:bg-gray-100 rounded-lg transition"
+                    title="Editar"
+                  >
+                    <Pencil size={14} className="text-gray-500" />
+                  </button>
+                  <button
+                    onClick={() => eliminar(dep)}
+                    className="p-1.5 hover:bg-red-50 rounded-lg transition"
+                    title="Eliminar"
+                  >
+                    <Trash2 size={14} className="text-red-400" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
@@ -154,12 +209,13 @@ export default function Departamentos() {
             {errorMsg && <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-600">{errorMsg}</div>}
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Piso</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Piso *</label>
                 <select
                   className="w-full border rounded-lg px-3 py-2 text-sm"
                   value={form.piso}
                   onChange={e => setForm(f => ({ ...f, piso: e.target.value }))}
                 >
+                  <option value="">Seleccionar...</option>
                   {PISOS.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>

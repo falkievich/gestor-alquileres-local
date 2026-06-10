@@ -35,10 +35,11 @@ const emptyForm: ContratoCreate = {
   alquiler_base_actual: 0,
   expensa_base_actual: undefined,
   porcentaje_aumento: 0,
-  periodicidad_aumento_meses: 3,
+  periodicidad_aumento_meses: undefined,
   cobra_expensa: false,
   cobra_agua: false,
   cobra_luz: false,
+  tipo_aumento: undefined,
   fecha_ultimo_aumento: undefined,
 }
 
@@ -103,6 +104,7 @@ export default function Contratos() {
       cobra_expensa: c.cobra_expensa,
       cobra_agua: c.cobra_agua,
       cobra_luz: c.cobra_luz,
+      tipo_aumento: c.tipo_aumento ?? 'MANUAL',
       fecha_ultimo_aumento: c.fecha_ultimo_aumento,
     })
     setContratoEnCurso(!!c.fecha_ultimo_aumento)
@@ -120,6 +122,22 @@ export default function Contratos() {
 
   async function guardar() {
     setErrorMsg('')
+    if (modal === 'crear') {
+      const errores: string[] = []
+      if (!form.id_departamentos || form.id_departamentos <= 0) errores.push('Departamento es obligatorio.')
+      if (!form.id_inquilinos || form.id_inquilinos <= 0) errores.push('Inquilino es obligatorio.')
+      if (!form.fecha_inicio?.trim()) errores.push('Fecha inicio es obligatoria.')
+      if (!form.fecha_fin?.trim()) errores.push('Fecha vencimiento es obligatoria.')
+      if (!form.alquiler_base_actual || form.alquiler_base_actual <= 0) errores.push('Alquiler base es obligatorio.')
+      if (!form.tipo_aumento) errores.push('Tipo de aumento es obligatorio.')
+      if (!form.periodicidad_aumento_meses || form.periodicidad_aumento_meses <= 0) {
+        errores.push('Periodicidad aumento (meses) es obligatoria.')
+      }
+      if (errores.length > 0) {
+        setErrorMsg(errores.join(' '))
+        return
+      }
+    }
     try {
       let contratoId: number
       if (modal === 'crear') {
@@ -392,19 +410,33 @@ export default function Contratos() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">% Aumento</label>
-                <input type="number" step="0.1" className="w-full border rounded-lg px-3 py-2 text-sm"
-                  value={form.porcentaje_aumento || ''}
-                  onChange={e => setForm(f => ({ ...f, porcentaje_aumento: Number(e.target.value) }))}
-                  placeholder="Por ejemplo: 8.0"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de aumento</label>
+                <select
+                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                  value={form.tipo_aumento ?? ''}
+                  onChange={e => setForm(f => ({ ...f, tipo_aumento: (e.target.value || undefined) as 'MANUAL' | 'ICL' | undefined }))}
+                >
+                  <option value="">Seleccionar...</option>
+                  <option value="MANUAL">MANUAL — porcentaje fijo</option>
+                  <option value="ICL">ICL — Índice para Contratos de Locación (BCRA)</option>
+                </select>
               </div>
+              {form.tipo_aumento === 'MANUAL' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">% Aumento</label>
+                  <input type="number" step="0.1" className="w-full border rounded-lg px-3 py-2 text-sm"
+                    value={form.porcentaje_aumento || ''}
+                    onChange={e => setForm(f => ({ ...f, porcentaje_aumento: Number(e.target.value) }))}
+                    placeholder="Por ejemplo: 8.0"
+                  />
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Periodicidad aumento (meses)</label>
                 <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
                   value={form.periodicidad_aumento_meses || ''}
-                  onChange={e => setForm(f => ({ ...f, periodicidad_aumento_meses: Number(e.target.value) }))}
-                  placeholder="Por ejemplo: 3"
+                  onChange={e => setForm(f => ({ ...f, periodicidad_aumento_meses: e.target.value ? Number(e.target.value) : undefined }))}
+                  placeholder="Por ejemplo: 4"
                 />
               </div>
             </div>

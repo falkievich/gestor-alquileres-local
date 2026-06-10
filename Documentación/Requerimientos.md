@@ -15,6 +15,7 @@
 - **HTTP client:** Axios
 
 **Iniciar en desarrollo:**
+
 ```bash
 cd frontend
 npm run dev
@@ -34,6 +35,7 @@ El servidor de desarrollo queda disponible en `http://localhost:5173`.
 - **Variables de entorno:** python-dotenv
 
 **Iniciar en desarrollo:**
+
 ```bash
 cd backend
 .venv\Scripts\uvicorn.exe app.main:app --reload --port 8000
@@ -98,6 +100,7 @@ uno por cada contrato activo. Cada fila representa un inquilino y su departament
 detalle de lo que debe abonar ese mes.
 
 **Información visible por fila:**
+
 - Departamento e inquilino
 - Monto de alquiler calculado (con indicación si tiene ajuste manual aplicado)
 - Expensas, agua y luz (si aplican al contrato)
@@ -106,12 +109,14 @@ detalle de lo que debe abonar ese mes.
 - Nota de ajuste (si se ingresó una al aplicar override)
 
 **Acciones generales (barra superior):**
+
 - **Mostrar / Ocultar pagados:** alterna entre ver solo los pendientes o el historial de pagados del mes
 - **Ajuste masivo:** permite seleccionar varios registros y aplicar un mismo delta de alquiler a todos a la vez
 - **Backup:** crea una copia de seguridad de la base de datos en la carpeta `backups/`
 - **Imprimir:** abre el diálogo de impresión del navegador con el listado del mes
 
 **Acciones por fila:**
+
 - **Marcar como pagado:** registra el pago del mes para ese inquilino (pide confirmación)
 - **Desmarcar pagado:** revierte el pago si fue marcado por error
 - **Ajuste individual (ícono de sliders):** abre el modal de override para modificar montos de ese mes
@@ -123,6 +128,7 @@ detalle de lo que debe abonar ese mes.
 Permite modificar el alquiler y/o expensa de un registro mensual puntual sin afectar el contrato.
 
 **Campos:**
+
 - **Modificación alquiler ($):** delta numérico que se suma o resta al alquiler calculado (puede ser negativo)
 - **Modificación expensa ($):** delta numérico que se suma o resta a la expensa calculada
 - **Nota:** texto libre para registrar el motivo del ajuste (opcional)
@@ -134,6 +140,7 @@ Botón **Restaurar** para volver a los valores calculados originalmente si ya te
 #### Modal: Confirmación de pago
 
 Muestra el resumen del mes a cobrar antes de confirmar:
+
 - Alquiler, expensa, agua, luz y total
 - Nota de ajuste si existe
 - Botones: **Confirmar** / **Cancelar**
@@ -146,6 +153,7 @@ Aparece al activar el modo de selección múltiple. Permite elegir varios regist
 y aplicarles el mismo ajuste de alquiler.
 
 **Campos:**
+
 - **Modificación alquiler ($):** delta que se aplica a todos los seleccionados
 - **Nota:** texto libre para todos los registros seleccionados
 
@@ -154,6 +162,7 @@ y aplicarles el mismo ajuste de alquiler.
 #### Panel: Historial de pagos
 
 Se activa con el botón "Mostrar pagados". Muestra todos los registros ya cobrados con filtros:
+
 - **Año** (selector)
 - **Mes** (selector)
 - **Inquilino** (selector)
@@ -170,6 +179,7 @@ Cada tarjeta indica el piso, código, dirección y si está **Ocupado** o **Libr
 un contrato activo.
 
 **Acciones por departamento:**
+
 - **Editar:** abre modal para modificar los datos
 - **Eliminar:** elimina el departamento (solo si no tiene contratos)
 - **Ver historial de contratos:** abre modal con todos los contratos que tuvo ese departamento
@@ -180,6 +190,7 @@ un contrato activo.
 #### Modal: Crear / Editar departamento
 
 **Campos:**
+
 - **Piso:** selector (PB, 1°, 2°, 3°, etc.)
 - **Código:** texto libre (ej: "A", "B", "101")
 - **Dirección:** texto libre opcional (ej: "Av. Corrientes 1234")
@@ -206,12 +217,14 @@ Listado de todos los inquilinos del sistema en formato tabla.
 Incluye buscador por nombre en tiempo real.
 
 **Columnas:**
+
 - Nombre y apellido
 - Teléfono
 - Estado (Activo / Inactivo)
 - Acciones
 
 **Acciones por inquilino:**
+
 - **Editar:** abre modal para modificar datos
 - **Eliminar:** elimina el inquilino (solo si no tiene contratos)
 - **Ver contratos:** abre modal con el historial de contratos del inquilino
@@ -222,6 +235,7 @@ Incluye buscador por nombre en tiempo real.
 #### Modal: Crear / Editar inquilino
 
 **Campos:**
+
 - **Nombre y apellido:** texto libre
 - **Teléfono:** texto libre (opcional)
 - **Es actual:** checkbox para indicar si es un inquilino vigente o uno anterior que ya no está
@@ -248,6 +262,7 @@ Listado de contratos dividido en dos secciones: **Activos** y **Finalizados**.
 Incluye filtros por inquilino, departamento y estado.
 
 **Información visible por contrato:**
+
 - Departamento e inquilino
 - Fecha de inicio y vencimiento
 - Estado: Activo, Por vencer (≤3 meses), Vencido, Finalizado
@@ -258,6 +273,7 @@ Incluye filtros por inquilino, departamento y estado.
 - Ícono de archivo adjunto si tiene contrato subido
 
 **Acciones por contrato:**
+
 - **Editar:** abre modal con todos los datos del contrato
 - **Cerrar contrato:** marca el contrato como finalizado (pide confirmación)
 - **Descargar archivo:** descarga el PDF/DOCX adjunto (si existe)
@@ -267,6 +283,7 @@ Incluye filtros por inquilino, departamento y estado.
 #### Modal: Crear contrato
 
 **Campos:**
+
 - **Departamento:** selector (solo muestra los disponibles / libres)
 - **Inquilino:** selector (solo muestra inquilinos activos sin contrato vigente)
 - **Fecha de inicio**
@@ -285,6 +302,7 @@ Incluye filtros por inquilino, departamento y estado.
 #### Modal: Editar contrato
 
 Mismos campos que crear, con las siguientes diferencias:
+
 - El departamento e inquilino no son modificables
 - Si el contrato ya tiene registros pagados, la fecha de inicio queda bloqueada
 - Se puede subir o reemplazar el archivo adjunto
@@ -300,6 +318,7 @@ y que aún no tienen ese valor cargado para el mes actual.
 Si todos los servicios están cargados, muestra un mensaje de confirmación y no presenta ninguna fila.
 
 **Columnas de la tabla:**
+
 - Departamento
 - Inquilino
 - Agua ($): campo numérico editable (solo si el contrato cobra agua; si no, muestra "No cobra")
@@ -316,6 +335,7 @@ Vista de todos los contratos activos con el detalle del próximo aumento calcula
 Cada contrato se muestra como una tarjeta con la información completa.
 
 **Información por tarjeta:**
+
 - Departamento e inquilino
 - Dirección del departamento (si tiene)
 - Porcentaje de aumento configurado y periodicidad (ej: "10% cada 3 meses")
@@ -323,6 +343,7 @@ Cada contrato se muestra como una tarjeta con la información completa.
 - Alerta de estado: **Vencido** (en rojo) o **Por vencer** (en amarillo)
 
 **Cuadros de montos proyectados** (si el sistema puede calcularlos):
+
 - Alquiler actual
 - Alquiler nuevo tras el aumento (con el incremento en $)
 - Expensa actual y expensa nueva (si el contrato cobra expensas)
@@ -330,3 +351,67 @@ Cada contrato se muestra como una tarjeta con la información completa.
 **Alerta especial:**
 Si el contrato fue cargado como "ya en curso" pero no tiene la fecha del último aumento completada,
 se muestra un aviso indicando que hay que editar el contrato para que el cálculo sea correcto.
+
+---
+
+#### Regla de negocio obligatoria — Cálculo de ajuste por ICL
+
+Cuando un contrato tiene tipo de aumento **ICL**, el sistema determina el nuevo alquiler
+consultando el Índice para Contratos de Locación publicado por el BCRA para el período
+completo que termina el día anterior al inicio de la nueva vigencia.
+
+**¿Cómo se construye el período a consultar?**
+
+La duración del período es igual a la periodicidad de aumento del contrato.
+El período finaliza el último día del mes inmediatamente anterior al mes en que entra en vigencia
+el nuevo valor. El período comienza tantos meses antes como indique la periodicidad.
+
+Ejemplo con periodicidad 4 meses:
+
+|                          | Fecha                    |
+| ------------------------ | ------------------------ |
+| Inicio del período       | 01/03/2026               |
+| Fin del período          | 30/06/2026               |
+| Vigencia del nuevo valor | 01/07/2026 al 31/10/2026 |
+
+**¿Qué valores se toman de la API del BCRA?**
+
+La API devuelve un registro diario por cada día hábil del período. El sistema toma únicamente
+dos valores:
+
+- **ICL Inicial:** el valor publicado para la fecha de inicio del período.
+- **ICL Final:** el valor publicado para la fecha de fin del período.
+
+**Fórmula:**
+
+```
+Coeficiente = ICL Final / ICL Inicial
+
+Nuevo Alquiler = Alquiler Actual × Coeficiente
+```
+
+**Ejemplo numérico:**
+
+```
+Alquiler Actual:           $500.000
+
+ICL Inicial (01/03/2026):    25,00
+ICL Final   (30/06/2026):    28,50
+
+Coeficiente = 28,50 / 25,00 = 1,14
+
+Nuevo Alquiler = $500.000 × 1,14 = $570.000
+```
+
+**Resultado:**
+
+- Variación ICL: 14 %
+- Nuevo Alquiler: $570.000
+- Vigencia: 01/07/2026 al 31/10/2026
+
+**¿Qué pasa si el BCRA todavía no publicó el valor para la fecha final?**
+
+El cálculo no puede realizarse. El sistema muestra el estado **"ICL pendiente de cálculo"**,
+informa la última fecha disponible publicada por el BCRA y estima cuántos días faltan para
+que el período esté completo. No se muestran montos ni porcentajes estimados hasta tanto
+el dato esté disponible.
