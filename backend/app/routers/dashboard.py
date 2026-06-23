@@ -6,7 +6,7 @@ from app.db import get_session
 from app.model.models import Contrato, RegistroMensual
 from app.crud import contratos as crud_contratos
 from app.crud import registros as crud_registros
-from app.model.models import ContratoRead
+from app.model.models import ContratoRead, DepartamentoRead, InquilinoRead, RegistroMensualRead
 from app.service.mes_service import (
     get_mes_actual,
     get_or_create_registro,
@@ -79,9 +79,9 @@ def get_dashboard(session: Session = Depends(get_session)):
 
         resultado.append({
             "contrato": ContratoRead.model_validate(contrato),
-            "registro": registro,
-            "departamento": dep,
-            "inquilino": inq,
+            "registro": RegistroMensualRead.model_validate(registro),
+            "departamento": DepartamentoRead.model_validate(dep) if dep else None,
+            "inquilino": InquilinoRead.model_validate(inq) if inq else None,
             "estado_servicios": estado_servicios,
             "vencido": vencido,
             "anio": anio,
@@ -120,10 +120,10 @@ def get_historial_pagos(
         dep = session.get(Departamento, contrato.id_departamentos)
         inq = session.get(Inquilino, contrato.id_inquilinos)
         resultado.append({
-            "registro": reg,
+            "registro": RegistroMensualRead.model_validate(reg),
             "contrato": ContratoRead.model_validate(contrato),
-            "departamento": dep,
-            "inquilino": inq,
+            "departamento": DepartamentoRead.model_validate(dep) if dep else None,
+            "inquilino": InquilinoRead.model_validate(inq) if inq else None,
             "anio": reg.anio,
             "mes": reg.mes,
             "total": reg.total,
