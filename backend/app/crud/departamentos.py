@@ -4,7 +4,7 @@ from app.model.models import Departamento, DepartamentoCreate, DepartamentoUpdat
 
 
 def get_departamentos(session: Session) -> List[Departamento]:
-    return session.exec(select(Departamento)).all()
+    return session.exec(select(Departamento).order_by(Departamento.id_departamentos.desc())).all()
 
 
 def get_departamento(session: Session, id: int) -> Optional[Departamento]:

@@ -26,6 +26,14 @@ class DepartamentoUpdate(SQLModel):
     esta_ocupado: Optional[bool] = None
 
 
+class DepartamentoRead(SQLModel):
+    id_departamentos: Optional[int] = None
+    piso: str
+    codigo: str
+    direccion: Optional[str] = None
+    esta_ocupado: bool = False
+
+
 class Inquilino(SQLModel, table=True):
     __tablename__ = "inquilinos"
 
@@ -45,6 +53,13 @@ class InquilinoUpdate(SQLModel):
     nombre_apellido: Optional[str] = None
     telefono: Optional[str] = None
     es_actual: Optional[bool] = None
+
+
+class InquilinoRead(SQLModel):
+    id_inquilinos: Optional[int] = None
+    nombre_apellido: str
+    telefono: Optional[str] = None
+    es_actual: bool = True
 
 
 class Contrato(SQLModel, table=True):
@@ -164,4 +179,21 @@ class RegistroMensualUpdate(SQLModel):
     luz: Optional[int] = None
     pagado: Optional[bool] = None
     total: Optional[int] = None
+    porcentaje_aumento_usado: Optional[float] = None
+
+
+class RegistroMensualRead(SQLModel):
+    id_registros_mensuales: Optional[int] = None
+    id_contratos: int
+    anio: int
+    mes: int
+    alquiler_calculado: int
+    expensa_calculada: Optional[int] = None
+    alquiler_override: Optional[int] = None
+    expensa_override: Optional[int] = None
+    nota_override: Optional[str] = None
+    agua: Optional[int] = None
+    luz: Optional[int] = None
+    pagado: bool = False
+    total: int
     porcentaje_aumento_usado: Optional[float] = None

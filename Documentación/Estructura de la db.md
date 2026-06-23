@@ -46,6 +46,7 @@ CREATE TABLE contratos (
     estado                      VARCHAR(20)     NOT NULL DEFAULT 'activo',
     alquiler_base_actual        INT             NOT NULL,
     expensa_base_actual         INT                 NULL,
+    tipo_aumento                VARCHAR(20)     NOT NULL DEFAULT 'MANUAL', -- Puede ser: MANUAL (utiliza porcentaje_aumento) o ICL (utiliza API del BCRA)
     porcentaje_aumento          DOUBLE          NOT NULL DEFAULT 0.0,
     periodicidad_aumento_meses  INT             NOT NULL DEFAULT 3,
     ultimo_aumento_anio         INT                 NULL,
@@ -93,6 +94,7 @@ CREATE TABLE registros_mensuales (
     luz                     INT         NULL,
     pagado                  TINYINT(1)  NOT NULL DEFAULT 0,
     total                   INT         NOT NULL,
+    porcentaje_aumento_usado DOUBLE NULL, -- Se completa únicamente cuando realmente ocurre un aumento. Si ese mes no hubo aumento: NULL
 
     PRIMARY KEY (id_registros_mensuales),
 

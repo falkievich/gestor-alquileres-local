@@ -26,8 +26,8 @@ def _fetch_icl_bcra(fecha_desde: date, fecha_hasta: date) -> Tuple[Optional[List
     """
     try:
         params = {
-            "desde": fecha_desde.strftime("%Y-%m-%d"),
-            "hasta": fecha_hasta.strftime("%Y-%m-%d"),
+            "Desde": fecha_desde.strftime("%Y-%m-%d"),
+            "Hasta": fecha_hasta.strftime("%Y-%m-%d"),
         }
         response = httpx.get(
             BCRA_ICL_URL,
@@ -113,8 +113,9 @@ def _calcular_icl_aumento(
 
     hoy = date.today()
 
-    # Consultar hasta hoy como máximo (nunca fechas futuras)
-    detalle, error = _fetch_icl_bcra(fecha_desde, min(fecha_hasta, hoy))
+    # Consultar el período objetivo completo. El BCRA puede publicar
+    # algunos días por adelantado respecto a la fecha del sistema.
+    detalle, error = _fetch_icl_bcra(fecha_desde, fecha_hasta)
 
     if error or detalle is None:
         return {
@@ -356,6 +357,8 @@ def calcular_proximo_aumento(contrato: Contrato) -> Dict[str, Any]:
     total_meses = base_mes + contrato.periodicidad_aumento_meses
     proximo_anio = base_anio + (total_meses - 1) // 12
     proximo_mes = ((total_meses - 1) % 12) + 1
+    fecha_vigencia = date(proximo_anio, proximo_mes, 1)
+    hoy = date.today()
 
     if tipo == 'ICL':
         icl_info = _calcular_icl_aumento(
@@ -363,6 +366,7 @@ def calcular_proximo_aumento(contrato: Contrato) -> Dict[str, Any]:
         resultado: Dict[str, Any] = {
             "proximo_anio": proximo_anio,
             "proximo_mes": proximo_mes,
+            "fecha_vigencia": fecha_vigencia.isoformat(),
             "alquiler_actual": contrato.alquiler_base_actual,
             "expensa_actual": contrato.expensa_base_actual,
             "requires_fecha_ultimo": False,
@@ -373,10 +377,17 @@ def calcular_proximo_aumento(contrato: Contrato) -> Dict[str, Any]:
             resultado["alquiler_nuevo"] = icl_info.get("alquiler_nuevo")
             resultado["expensa_nueva"] = icl_info.get("expensa_nueva")
             resultado["porcentaje"] = icl_info.get("porcentaje")
+            # Estado intermedio: ya hay datos suficientes para calcular,
+            # pero el nuevo valor entra en vigencia recién en fecha_vigencia.
+            resultado["icl_calculado"] = fecha_vigencia > hoy
+            # Mantiene compatibilidad para estado aplicado/en fecha.
+            resultado["icl_aplicable"] = fecha_vigencia <= hoy
         else:
             resultado["alquiler_nuevo"] = None
             resultado["expensa_nueva"] = None
             resultado["porcentaje"] = None
+            resultado["icl_calculado"] = False
+            resultado["icl_aplicable"] = False
         return resultado
 
     # MANUAL
