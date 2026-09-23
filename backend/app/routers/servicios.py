@@ -16,7 +16,11 @@ router = APIRouter(prefix="/servicios", tags=["servicios"])
 
 @router.get("/pendientes")
 def listar_pendientes(session: Session = Depends(get_session)):
-    """Lista contratos activos que cobren agua/luz y estén Pendiente y No pagado en el mes actual."""
+    """
+    Lista contratos activos que cobren agua/luz en el mes actual:
+    incluye los pendientes de cargar y los ya cargados pero sin cobrar,
+    con un campo "estado" para diferenciarlos ("Pendiente" / "OK").
+    """
     anio, mes = get_mes_actual()
     contratos = crud_contratos.get_contratos_activos(session)
     resultado = []
@@ -30,8 +34,6 @@ def listar_pendientes(session: Session = Depends(get_session)):
         if registro.pagado:
             continue
         estado = calcular_estado_servicios(contrato, registro)
-        if estado != "Pendiente":
-            continue
 
         from app.model.models import Departamento, Inquilino
         dep = session.get(Departamento, contrato.id_departamentos)
@@ -41,6 +43,7 @@ def listar_pendientes(session: Session = Depends(get_session)):
             "registro": registro,
             "departamento": dep,
             "inquilino": inq,
+            "estado": estado,
         })
     return resultado
 
@@ -52,10 +55,14 @@ def guardar_servicios(
     luz: Optional[int] = None,
     session: Session = Depends(get_session)
 ):
-    """Guarda agua/luz en el registro mensual y recalcula el total."""
+    """Guarda (o edita) agua/luz en el registro mensual y recalcula el total."""
     registro = session.get(RegistroMensual, id_registro)
     if not registro:
         raise HTTPException(status_code=404, detail="Registro no encontrado")
+    if registro.pagado:
+        raise HTTPException(
+            status_code=400,
+            detail="No se puede editar el servicio de un mes ya cobrado.")
     contrato = session.get(Contrato, registro.id_contratos)
     if not contrato:
         raise HTTPException(status_code=404, detail="Contrato no encontrado")

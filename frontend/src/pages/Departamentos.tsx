@@ -3,6 +3,7 @@ import api from '../lib/api'
 import type { Departamento, DepartamentoCreate, HistorialItem, PagoItem } from '../lib/types'
 import { PISOS, MESES, formatMoneda, formatFecha } from '../lib/types'
 import { Plus, Pencil, Trash2, History, X, CreditCard, Building2, Filter } from 'lucide-react'
+import { Label, clasesCampo, ErrorCamposModal } from '../lib/ui'
 
 function formatDepto(piso: string | undefined, codigo: string | undefined) {
   if (!piso || !codigo) return `${piso ?? ''} ${codigo ?? ''}`.trim()
@@ -21,6 +22,9 @@ export default function Departamentos() {
   const [filtroMes, setFiltroMes] = useState('')
   const [form, setForm] = useState<DepartamentoCreate>({ piso: '', codigo: '', direccion: '' })
   const [errorMsg, setErrorMsg] = useState('')
+  const [errores, setErrores] = useState<Record<string, string>>({})
+  const [popupErrores, setPopupErrores] = useState<string[]>([])
+  const [saving, setSaving] = useState(false)
 
   async function cargar() {
     const res = await api.get('/departamentos/')
@@ -32,6 +36,8 @@ export default function Departamentos() {
   function abrirCrear() {
     setForm({ piso: '', codigo: '', direccion: '' })
     setErrorMsg('')
+    setErrores({})
+    setPopupErrores([])
     setModal('crear')
   }
 
@@ -39,6 +45,8 @@ export default function Departamentos() {
     setSelected(dep)
     setForm({ piso: dep.piso, codigo: dep.codigo, direccion: dep.direccion ?? '' })
     setErrorMsg('')
+    setErrores({})
+    setPopupErrores([])
     setModal('editar')
   }
 
@@ -67,16 +75,17 @@ export default function Departamentos() {
   }
 
   async function guardar() {
+    if (saving) return
     setErrorMsg('')
-    if (modal === 'crear') {
-      const errores: string[] = []
-      if (!form.piso.trim()) errores.push('Piso es obligatorio.')
-      if (!form.codigo.trim()) errores.push('Código es obligatorio.')
-      if (errores.length > 0) {
-        setErrorMsg(errores.join(' '))
-        return
-      }
+    const e: Record<string, string> = {}
+    if (!form.piso.trim()) e.piso = 'Piso es obligatorio.'
+    if (!form.codigo.trim()) e.codigo = 'Código es obligatorio.'
+    if (Object.keys(e).length > 0) {
+      setErrores(e)
+      setPopupErrores(Object.values(e))
+      return
     }
+    setSaving(true)
     try {
       if (modal === 'crear') {
         await api.post('/departamentos/', form)
@@ -85,10 +94,21 @@ export default function Departamentos() {
       }
       cargar()
       setModal(null)
-    } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Error al guardar'
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Error al guardar'
       setErrorMsg(msg)
+    } finally {
+      setSaving(false)
     }
+  }
+
+  function limpiarError(campo: string) {
+    setErrores(prev => {
+      if (!prev[campo]) return prev
+      const n = { ...prev }
+      delete n[campo]
+      return n
+    })
   }
 
   async function eliminar(dep: Departamento) {
@@ -209,28 +229,28 @@ export default function Departamentos() {
             {errorMsg && <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-600">{errorMsg}</div>}
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Piso *</label>
+                <Label required>Piso</Label>
                 <select
-                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                  className={clasesCampo(errores, 'piso')}
                   value={form.piso}
-                  onChange={e => setForm(f => ({ ...f, piso: e.target.value }))}
+                  onChange={e => { limpiarError('piso'); setForm(f => ({ ...f, piso: e.target.value })) }}
                 >
                   <option value="">Seleccionar...</option>
                   {PISOS.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Código *</label>
+                <Label required>Código</Label>
                 <input
                   type="text"
-                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                  className={clasesCampo(errores, 'codigo')}
                   value={form.codigo}
-                  onChange={e => setForm(f => ({ ...f, codigo: e.target.value }))}
+                  onChange={e => { limpiarError('codigo'); setForm(f => ({ ...f, codigo: e.target.value })) }}
                   placeholder="Ej: 1A"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Dirección (opcional)</label>
+                <Label required={false}>Dirección (opcional)</Label>
                 <input
                   type="text"
                   className="w-full border rounded-lg px-3 py-2 text-sm"
@@ -242,11 +262,15 @@ export default function Departamentos() {
             </div>
             <div className="flex gap-2 justify-end mt-5">
               <button onClick={() => setModal(null)} className="px-4 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100">Cancelar</button>
-              <button onClick={guardar} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Guardar</button>
+              <button onClick={guardar} disabled={saving} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
+                {saving ? 'Guardando...' : 'Guardar'}
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      <ErrorCamposModal errores={popupErrores} onCerrar={() => setPopupErrores([])} />
 
       {/* Modal Historial */}
       {modal === 'historial' && selected && (

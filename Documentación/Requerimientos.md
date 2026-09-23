@@ -291,11 +291,22 @@ Incluye filtros por inquilino, departamento y estado.
 - **Alquiler base actual ($)**
 - **Expensas base ($):** campo opcional, se habilita con el toggle "Cobra expensas"
 - **Cobra expensas / agua / luz:** toggles para indicar qué servicios incluye el contrato
-- **Porcentaje de aumento (%):** número
+- **Porcentaje de aumento (%):** obligatorio cuando el tipo de aumento es MANUAL
 - **Periodicidad (meses):** cuántos meses entre cada aumento (ej: 3, 6, 12)
-- **¿Contrato ya en curso?:** checkbox. Si se activa, aparece el campo "Fecha del último aumento"
-  para que el sistema calcule correctamente el próximo aumento
+- **¿Contrato ya en curso?:** checkbox. Si se activa, aparecen los campos obligatorios:
+  - **Alquiler inicial del contrato:** monto con el que comenzó (histórico, no se usa para calcular aumentos)
+  - **Alquiler actual (último cobro):** monto que se cobra actualmente; es la base de los próximos aumentos
+  - **Fecha del último aumento:** para que el sistema calcule correctamente el próximo aumento
+  - Si además cobra expensas: **Expensa inicial del contrato** y **Expensa actual (último cobro)**
 - **Archivo adjunto:** selector de archivo PDF o DOCX (opcional)
+
+Los campos con asterisco (\*) son obligatorios: se muestran en **rojo** y, si se envía el
+formulario sin completarlos, el campo se resalta con un borde rojo intenso y aparece un
+popup listando los campos faltantes.
+
+Al editar el alquiler/expensa actual de un contrato, los registros mensuales del mes
+en curso y futuros (no pagados y sin ajuste manual) se recalculan automáticamente
+para reflejar el nuevo valor; los meses ya pagados no se modifican.
 
 ---
 
@@ -313,9 +324,7 @@ Mismos campos que crear, con las siguientes diferencias:
 
 Pantalla para cargar los valores de agua y luz del mes en curso.
 Solo muestra los departamentos cuyos contratos tienen habilitado el cobro de agua y/o luz,
-y que aún no tienen ese valor cargado para el mes actual.
-
-Si todos los servicios están cargados, muestra un mensaje de confirmación y no presenta ninguna fila.
+cuyo registro del mes no esté cobrado, y cuyo valor esté pendiente **o ya cargado**.
 
 **Columnas de la tabla:**
 
@@ -323,9 +332,11 @@ Si todos los servicios están cargados, muestra un mensaje de confirmación y no
 - Inquilino
 - Agua ($): campo numérico editable (solo si el contrato cobra agua; si no, muestra "No cobra")
 - Luz ($): campo numérico editable (solo si el contrato cobra luz; si no, muestra "No cobra")
-- Acción: botón **Guardar** por fila
+- Estado: badge **Pendiente** (amarillo) o **Cargado** (verde)
+- Acción: botón **Guardar** (o **Actualizar** si ya estaba cargado) por fila
 
-Al guardar, el valor se incorpora automáticamente al total del mes en el Dashboard.
+Los servicios ya cargados permanecen visibles y **se pueden editar** hasta que el cobro
+del mes sea registrado como pagado en el Dashboard; en ese momento desaparecen del listado.
 
 ---
 

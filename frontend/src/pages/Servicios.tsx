@@ -14,6 +14,7 @@ interface ServicioRow {
   registro: DashboardItem['registro']
   departamento: DashboardItem['departamento']
   inquilino: DashboardItem['inquilino']
+  estado?: 'Pendiente' | 'OK'
 }
 
 export default function Servicios() {
@@ -78,7 +79,7 @@ export default function Servicios() {
         <div className="text-center py-12">
           <div className="text-4xl mb-3">✅</div>
           <p className="text-gray-500">No hay servicios pendientes de cargar.</p>
-          <p className="text-gray-400 text-sm mt-1">Todos los contratos que cobran agua/luz ya tienen sus valores cargados.</p>
+          <p className="text-gray-400 text-sm mt-1">Los servicios cargados de este mes ya fueron cobrados.</p>
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -89,6 +90,7 @@ export default function Servicios() {
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Inquilino</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Agua ($)</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Luz ($)</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Estado</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Acción</th>
               </tr>
             </thead>
@@ -96,6 +98,7 @@ export default function Servicios() {
               {items.map(item => {
                 const idReg = item.registro.id_registros_mensuales
                 const v = valores[idReg] ?? { agua: '', luz: '' }
+                const cargado = item.estado === 'OK'
                 return (
                   <tr key={idReg} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
@@ -142,13 +145,18 @@ export default function Servicios() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-center">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${cargado ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                        {cargado ? 'Cargado' : 'Pendiente'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
                       <button
                         onClick={() => guardarFila(idReg, item.contrato.cobra_agua, item.contrato.cobra_luz)}
                         disabled={saving === idReg}
                         className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 mx-auto"
                       >
                         <Save size={14} />
-                        {saving === idReg ? 'Guardando...' : 'Guardar'}
+                        {saving === idReg ? 'Guardando...' : cargado ? 'Actualizar' : 'Guardar'}
                       </button>
                     </td>
                   </tr>

@@ -3,6 +3,7 @@ import api from '../lib/api'
 import type { Contrato, ContratoCreate, Departamento, Inquilino } from '../lib/types'
 import { formatMoneda, formatFecha } from '../lib/types'
 import { Plus, Pencil, X, Download, Lock, FileText, Archive } from 'lucide-react'
+import { Label, clasesCampo, ErrorCamposModal } from '../lib/ui'
 
 function formatDepto(piso: string | undefined, codigo: string | undefined) {
   if (!piso || !codigo) return `${piso ?? ''} ${codigo ?? ''}`.trim()
@@ -32,6 +33,8 @@ const emptyForm: ContratoCreate = {
   id_inquilinos: 0,
   fecha_inicio: '',
   fecha_fin: '',
+  alquiler_base_inicial: undefined,
+  expensa_base_inicial: undefined,
   alquiler_base_actual: 0,
   expensa_base_actual: undefined,
   porcentaje_aumento: 0,
@@ -51,6 +54,9 @@ export default function Contratos() {
   const [selected, setSelected] = useState<Contrato | null>(null)
   const [form, setForm] = useState<ContratoCreate>(emptyForm)
   const [errorMsg, setErrorMsg] = useState('')
+  const [errores, setErrores] = useState<Record<string, string>>({})
+  const [popupErrores, setPopupErrores] = useState<string[]>([])
+  const [saving, setSaving] = useState(false)
   const [archivoFile, setArchivoFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [fechaInicioBlocked, setFechaInicioBlocked] = useState(false)
@@ -86,6 +92,8 @@ export default function Contratos() {
     setForm(emptyForm)
     setArchivoFile(null)
     setErrorMsg('')
+    setErrores({})
+    setPopupErrores([])
     setFechaInicioBlocked(false)
     setContratoEnCurso(false)
     setModal('crear')
@@ -98,6 +106,8 @@ export default function Contratos() {
       id_inquilinos: c.id_inquilinos,
       fecha_inicio: c.fecha_inicio,
       fecha_fin: c.fecha_fin,
+      alquiler_base_inicial: c.alquiler_base_inicial ?? c.alquiler_base_actual,
+      expensa_base_inicial: c.expensa_base_inicial ?? c.expensa_base_actual,
       alquiler_base_actual: c.alquiler_base_actual,
       expensa_base_actual: c.expensa_base_actual,
       porcentaje_aumento: c.porcentaje_aumento,
@@ -111,6 +121,8 @@ export default function Contratos() {
     setContratoEnCurso(!!c.fecha_ultimo_aumento)
     setArchivoFile(null)
     setErrorMsg('')
+    setErrores({})
+    setPopupErrores([])
     // Verificar si ya existen registros pagados para este contrato
     try {
       const res = await api.get(`/contratos/${c.id_contratos}/tiene-pagos`)
@@ -121,24 +133,63 @@ export default function Contratos() {
     setModal('editar')
   }
 
-  async function guardar() {
-    setErrorMsg('')
+  function validar(): Record<string, string> {
+    const e: Record<string, string> = {}
     if (modal === 'crear') {
-      const errores: string[] = []
-      if (!form.id_departamentos || form.id_departamentos <= 0) errores.push('Departamento es obligatorio.')
-      if (!form.id_inquilinos || form.id_inquilinos <= 0) errores.push('Inquilino es obligatorio.')
-      if (!form.fecha_inicio?.trim()) errores.push('Fecha inicio es obligatoria.')
-      if (!form.fecha_fin?.trim()) errores.push('Fecha vencimiento es obligatoria.')
-      if (!form.alquiler_base_actual || form.alquiler_base_actual <= 0) errores.push('Alquiler base es obligatorio.')
-      if (!form.tipo_aumento) errores.push('Tipo de aumento es obligatorio.')
-      if (!form.periodicidad_aumento_meses || form.periodicidad_aumento_meses <= 0) {
-        errores.push('Periodicidad aumento (meses) es obligatoria.')
-      }
-      if (errores.length > 0) {
-        setErrorMsg(errores.join(' '))
-        return
-      }
+      if (!form.id_departamentos || form.id_departamentos <= 0) e.id_departamentos = 'Departamento es obligatorio.'
+      if (!form.id_inquilinos || form.id_inquilinos <= 0) e.id_inquilinos = 'Inquilino es obligatorio.'
+      if (!form.fecha_inicio?.trim()) e.fecha_inicio = 'Fecha inicio es obligatoria.'
     }
+    if (!form.fecha_fin?.trim()) e.fecha_fin = 'Fecha vencimiento es obligatoria.'
+    if (!form.tipo_aumento) {
+      e.tipo_aumento = 'Tipo de aumento es obligatorio.'
+    } else if (form.tipo_aumento === 'MANUAL' && (!form.porcentaje_aumento || form.porcentaje_aumento <= 0)) {
+      e.porcentaje_aumento = '% Aumento es obligatorio cuando el tipo es MANUAL.'
+    }
+    if (!form.periodicidad_aumento_meses || form.periodicidad_aumento_meses <= 0) {
+      e.periodicidad_aumento_meses = 'Periodicidad aumento (meses) es obligatoria.'
+    }
+    if (contratoEnCurso) {
+      if (!form.fecha_ultimo_aumento) e.fecha_ultimo_aumento = 'Fecha del último aumento es obligatoria.'
+      if (!form.alquiler_base_inicial || form.alquiler_base_inicial <= 0) {
+        e.alquiler_base_inicial = 'Alquiler inicial del contrato es obligatorio.'
+      }
+      if (!form.alquiler_base_actual || form.alquiler_base_actual <= 0) {
+        e.alquiler_base_actual = 'Alquiler actual (último cobro) es obligatorio.'
+      }
+      if (form.cobra_expensa) {
+        if (!form.expensa_base_inicial || form.expensa_base_inicial <= 0) {
+          e.expensa_base_inicial = 'Expensa inicial del contrato es obligatoria.'
+        }
+        if (!form.expensa_base_actual || form.expensa_base_actual <= 0) {
+          e.expensa_base_actual = 'Expensa actual (último cobro) es obligatoria.'
+        }
+      }
+    } else {
+      if (!form.alquiler_base_actual || form.alquiler_base_actual <= 0) e.alquiler_base_actual = 'Alquiler base es obligatorio.'
+    }
+    return e
+  }
+
+  function limpiarError(campo: string) {
+    setErrores(prev => {
+      if (!prev[campo]) return prev
+      const n = { ...prev }
+      delete n[campo]
+      return n
+    })
+  }
+
+  async function guardar() {
+    if (saving) return
+    setErrorMsg('')
+    const e = validar()
+    if (Object.keys(e).length > 0) {
+      setErrores(e)
+      setPopupErrores(Object.values(e))
+      return
+    }
+    setSaving(true)
     try {
       let contratoId: number
       if (modal === 'crear') {
@@ -164,10 +215,12 @@ export default function Contratos() {
 
       cargar()
       setModal(null)
-    } catch (e: unknown) {
+    } catch (err: unknown) {
       setUploading(false)
-      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Error al guardar'
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Error al guardar'
       setErrorMsg(msg)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -369,11 +422,11 @@ export default function Contratos() {
               {modal === 'crear' && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Departamento *</label>
+                    <Label required>Departamento</Label>
                     <select
-                      className="w-full border rounded-lg px-3 py-2 text-sm"
+                      className={clasesCampo(errores, 'id_departamentos')}
                       value={form.id_departamentos}
-                      onChange={e => setForm(f => ({ ...f, id_departamentos: Number(e.target.value) }))}
+                      onChange={e => { limpiarError('id_departamentos'); setForm(f => ({ ...f, id_departamentos: Number(e.target.value) })) }}
                     >
                       <option value={0}>Seleccionar...</option>
                       {departamentos.filter(d => !d.esta_ocupado).map(d => (
@@ -384,11 +437,11 @@ export default function Contratos() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Inquilino *</label>
+                    <Label required>Inquilino</Label>
                     <select
-                      className="w-full border rounded-lg px-3 py-2 text-sm"
+                      className={clasesCampo(errores, 'id_inquilinos')}
                       value={form.id_inquilinos}
-                      onChange={e => setForm(f => ({ ...f, id_inquilinos: Number(e.target.value) }))}
+                      onChange={e => { limpiarError('id_inquilinos'); setForm(f => ({ ...f, id_inquilinos: Number(e.target.value) })) }}
                     >
                       <option value={0}>Seleccionar...</option>
                       {inquilinosDisponibles.map(i => (
@@ -397,17 +450,17 @@ export default function Contratos() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Fecha inicio *</label>
-                    <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm"
+                    <Label required>Fecha inicio</Label>
+                    <input type="date" className={clasesCampo(errores, 'fecha_inicio')}
                       value={form.fecha_inicio}
-                      onChange={e => setForm(f => ({ ...f, fecha_inicio: e.target.value }))}
+                      onChange={e => { limpiarError('fecha_inicio'); setForm(f => ({ ...f, fecha_inicio: e.target.value })) }}
                     />
                   </div>
                 </>
               )}
               {modal === 'editar' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha inicio</label>
+                  <Label>Fecha inicio</Label>
                   <input type="date" className={`w-full border rounded-lg px-3 py-2 text-sm ${fechaInicioBlocked ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''}`}
                     value={form.fecha_inicio}
                     disabled={fechaInicioBlocked}
@@ -425,26 +478,32 @@ export default function Contratos() {
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha vencimiento *</label>
-                <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm"
+                <Label required>Fecha vencimiento</Label>
+                <input type="date" className={clasesCampo(errores, 'fecha_fin')}
                   value={form.fecha_fin}
-                  onChange={e => setForm(f => ({ ...f, fecha_fin: e.target.value }))}
+                  onChange={e => { limpiarError('fecha_fin'); setForm(f => ({ ...f, fecha_fin: e.target.value })) }}
                 />
               </div>
+              {!contratoEnCurso && (
+                <div>
+                  <Label required>Alquiler base</Label>
+                  <input type="number" className={clasesCampo(errores, 'alquiler_base_actual')}
+                    value={form.alquiler_base_actual || ''}
+                    onChange={e => { limpiarError('alquiler_base_actual'); setForm(f => ({ ...f, alquiler_base_actual: Number(e.target.value) })) }}
+                    placeholder="Por ejemplo: 100000"
+                  />
+                </div>
+              )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Alquiler base *</label>
-                <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
-                  value={form.alquiler_base_actual || ''}
-                  onChange={e => setForm(f => ({ ...f, alquiler_base_actual: Number(e.target.value) }))}
-                  placeholder="Por ejemplo: 100000"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de aumento *</label>
+                <Label required>Tipo de aumento</Label>
                 <select
-                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                  className={clasesCampo(errores, 'tipo_aumento')}
                   value={form.tipo_aumento ?? ''}
-                  onChange={e => setForm(f => ({ ...f, tipo_aumento: (e.target.value || undefined) as 'MANUAL' | 'ICL' | undefined }))}
+                  onChange={e => {
+                    limpiarError('tipo_aumento')
+                    if (e.target.value !== 'MANUAL') limpiarError('porcentaje_aumento')
+                    setForm(f => ({ ...f, tipo_aumento: (e.target.value || undefined) as 'MANUAL' | 'ICL' | undefined }))
+                  }}
                 >
                   <option value="">Seleccionar...</option>
                   <option value="MANUAL">MANUAL — porcentaje fijo</option>
@@ -453,19 +512,19 @@ export default function Contratos() {
               </div>
               {form.tipo_aumento === 'MANUAL' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">% Aumento</label>
-                  <input type="number" step="0.1" className="w-full border rounded-lg px-3 py-2 text-sm"
+                  <Label required>% Aumento</Label>
+                  <input type="number" step="0.1" className={clasesCampo(errores, 'porcentaje_aumento')}
                     value={form.porcentaje_aumento || ''}
-                    onChange={e => setForm(f => ({ ...f, porcentaje_aumento: Number(e.target.value) }))}
+                    onChange={e => { limpiarError('porcentaje_aumento'); setForm(f => ({ ...f, porcentaje_aumento: Number(e.target.value) })) }}
                     placeholder="Por ejemplo: 8.0"
                   />
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Periodicidad aumento (meses) *</label>
-                <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
+                <Label required>Periodicidad aumento (meses)</Label>
+                <input type="number" className={clasesCampo(errores, 'periodicidad_aumento_meses')}
                   value={form.periodicidad_aumento_meses || ''}
-                  onChange={e => setForm(f => ({ ...f, periodicidad_aumento_meses: e.target.value ? Number(e.target.value) : undefined }))}
+                  onChange={e => { limpiarError('periodicidad_aumento_meses'); setForm(f => ({ ...f, periodicidad_aumento_meses: e.target.value ? Number(e.target.value) : undefined })) }}
                   placeholder="Por ejemplo: 4"
                 />
               </div>
@@ -479,26 +538,78 @@ export default function Contratos() {
                   checked={contratoEnCurso}
                   onChange={e => {
                     setContratoEnCurso(e.target.checked)
-                    if (!e.target.checked) setForm(f => ({ ...f, fecha_ultimo_aumento: undefined }))
+                    if (!e.target.checked) {
+                      setForm(f => ({
+                        ...f,
+                        fecha_ultimo_aumento: undefined,
+                        alquiler_base_inicial: undefined,
+                        expensa_base_inicial: undefined,
+                      }))
+                      setErrores({})
+                    } else {
+                      setForm(f => ({
+                        ...f,
+                        alquiler_base_inicial: f.alquiler_base_inicial ?? f.alquiler_base_actual,
+                        expensa_base_inicial: f.expensa_base_inicial ?? f.expensa_base_actual,
+                      }))
+                    }
                   }}
                 />
                 ¿Este contrato ya lleva un tiempo en curso?
               </label>
               {contratoEnCurso && (
-                <div className="mt-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ¿Cuándo fue el último aumento aplicado? *
-                  </label>
-                  <input
-                    type="date"
-                    className="w-full border rounded-lg px-3 py-2 text-sm"
-                    value={form.fecha_ultimo_aumento ?? ''}
-                    onChange={e => setForm(f => ({ ...f, fecha_ultimo_aumento: e.target.value || undefined }))}
-                  />
-                  <p className="mt-1.5 text-xs text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-                    ℹ️ El sistema calculará el próximo aumento a partir de esta fecha + la periodicidad configurada.
-                    El monto actual que ingresaste se usará como base sin modificarse.
-                  </p>
+                <div className="mt-3 grid grid-cols-2 gap-4">
+                  <div>
+                    <Label required>Alquiler inicial del contrato</Label>
+                    <input type="number" className={clasesCampo(errores, 'alquiler_base_inicial')}
+                      value={form.alquiler_base_inicial || ''}
+                      onChange={e => { limpiarError('alquiler_base_inicial'); setForm(f => ({ ...f, alquiler_base_inicial: Number(e.target.value) })) }}
+                      placeholder="Monto con el que comenzó"
+                    />
+                  </div>
+                  <div>
+                    <Label required>Alquiler actual (último cobro)</Label>
+                    <input type="number" className={clasesCampo(errores, 'alquiler_base_actual')}
+                      value={form.alquiler_base_actual || ''}
+                      onChange={e => { limpiarError('alquiler_base_actual'); setForm(f => ({ ...f, alquiler_base_actual: Number(e.target.value) })) }}
+                      placeholder="Lo que se le cobra hoy"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label required>¿Cuándo fue el último aumento aplicado?</Label>
+                    <input
+                      type="date"
+                      className={clasesCampo(errores, 'fecha_ultimo_aumento')}
+                      value={form.fecha_ultimo_aumento ?? ''}
+                      onChange={e => { limpiarError('fecha_ultimo_aumento'); setForm(f => ({ ...f, fecha_ultimo_aumento: e.target.value || undefined })) }}
+                    />
+                  </div>
+                  {form.cobra_expensa && (
+                    <>
+                      <div>
+                        <Label required>Expensa inicial del contrato</Label>
+                        <input type="number" className={clasesCampo(errores, 'expensa_base_inicial')}
+                          value={form.expensa_base_inicial || ''}
+                          onChange={e => { limpiarError('expensa_base_inicial'); setForm(f => ({ ...f, expensa_base_inicial: Number(e.target.value) || undefined })) }}
+                          placeholder="Expensa con la que comenzó"
+                        />
+                      </div>
+                      <div>
+                        <Label required>Expensa actual (último cobro)</Label>
+                        <input type="number" className={clasesCampo(errores, 'expensa_base_actual')}
+                          value={form.expensa_base_actual || ''}
+                          onChange={e => { limpiarError('expensa_base_actual'); setForm(f => ({ ...f, expensa_base_actual: Number(e.target.value) || undefined })) }}
+                          placeholder="La que se le cobra hoy"
+                        />
+                      </div>
+                    </>
+                  )}
+                  <div className="col-span-2">
+                    <p className="text-xs text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                      ℹ️ El sistema calculará el próximo aumento a partir de esta fecha + la periodicidad configurada,
+                      tomando como base el <strong>Alquiler actual</strong>. El monto inicial se conserva como dato histórico del contrato.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
@@ -519,9 +630,9 @@ export default function Contratos() {
               </label>
             </div>
 
-            {form.cobra_expensa && (
+            {form.cobra_expensa && !contratoEnCurso && (
               <div className="mt-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Expensa base</label>
+                <Label required={false}>Expensa base</Label>
                 <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
                   value={form.expensa_base_actual || ''}
                   onChange={e => setForm(f => ({ ...f, expensa_base_actual: Number(e.target.value) || undefined }))}
@@ -532,10 +643,10 @@ export default function Contratos() {
 
             {/* Archivo */}
             <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <Label required={false}>
                 Contrato (PDF o DOCX)
-                {selected?.archivo_nombre && <span className="text-blue-600 ml-2">Actual: {selected.archivo_nombre}</span>}
-              </label>
+              </Label>
+              {selected?.archivo_nombre && <span className="text-blue-600 text-sm ml-2">Actual: {selected.archivo_nombre}</span>}
               <input
                 type="file"
                 accept=".pdf,.docx"
@@ -546,13 +657,15 @@ export default function Contratos() {
 
             <div className="flex gap-2 justify-end mt-5">
               <button onClick={() => setModal(null)} className="px-4 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100">Cancelar</button>
-              <button onClick={guardar} disabled={uploading} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
-                {uploading ? 'Subiendo...' : 'Guardar'}
+              <button onClick={guardar} disabled={saving || uploading} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
+                {saving ? 'Guardando...' : uploading ? 'Subiendo...' : 'Guardar'}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      <ErrorCamposModal errores={popupErrores} onCerrar={() => setPopupErrores([])} />
     </div>
   )
 }

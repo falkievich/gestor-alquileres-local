@@ -31,8 +31,23 @@ IF NOT EXIST "%ROOT%frontend\dist\index.html" (
 REM Ir a la carpeta backend para que Python encuentre el modulo "app"
 cd /d "%ROOT%backend"
 
-REM Abrir el navegador despues de 2 segundos (en segundo plano)
-start "" cmd /c "timeout /t 2 >nul && start http://127.0.0.1:8000"
+REM ─────────────────────────────────────────────
+REM Deteccion de Supermium (navegador compatible con Windows 8/antiguos).
+REM Si no se detecta, se abre el navegador por defecto del sistema.
+REM Podes fijar la ruta manualmente: SET SUPERMIUM_PATH=C:\ruta\supermium.exe
+REM ─────────────────────────────────────────────
+SET "SUPERMIUM_PATH="
+IF EXIST "%ROOT%Supermium\Application\supermium.exe" SET "SUPERMIUM_PATH=%ROOT%Supermium\Application\supermium.exe"
+IF NOT DEFINED SUPERMIUM_PATH IF EXIST "%LOCALAPPDATA%\Supermium\Application\supermium.exe" SET "SUPERMIUM_PATH=%LOCALAPPDATA%\Supermium\Application\supermium.exe"
+IF NOT DEFINED SUPERMIUM_PATH IF EXIST "%ProgramFiles%\Supermium\Application\supermium.exe" SET "SUPERMIUM_PATH=%ProgramFiles%\Supermium\Application\supermium.exe"
+IF NOT DEFINED SUPERMIUM_PATH IF EXIST "%ProgramFiles(x86)%\Supermium\Application\supermium.exe" SET "SUPERMIUM_PATH=%ProgramFiles(x86)%\Supermium\Application\supermium.exe"
+
+IF DEFINED SUPERMIUM_PATH (
+    echo  Navegador detectado: Supermium
+    start "" cmd /c "timeout /t 2 >nul && "%SUPERMIUM_PATH%" --app=http://127.0.0.1:8000 --new-window"
+) ELSE (
+    start "" cmd /c "timeout /t 2 >nul && start http://127.0.0.1:8000"
+)
 
 REM Ejecutar uvicorn con el Python embebido
 "%ROOT%python\python.exe" -m uvicorn app.main:app --host 127.0.0.1 --port 8000

@@ -32,6 +32,8 @@ export interface Contrato {
   fecha_inicio: string
   fecha_fin: string
   estado: string
+  alquiler_base_inicial?: number
+  expensa_base_inicial?: number
   alquiler_base_actual: number
   expensa_base_actual?: number
   porcentaje_aumento: number
@@ -51,6 +53,8 @@ export interface ContratoCreate {
   id_inquilinos: number
   fecha_inicio: string
   fecha_fin: string
+  alquiler_base_inicial?: number
+  expensa_base_inicial?: number
   alquiler_base_actual: number
   expensa_base_actual?: number
   porcentaje_aumento?: number
