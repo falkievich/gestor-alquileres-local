@@ -34,14 +34,26 @@ cd /d "%ROOT%backend"
 REM ─────────────────────────────────────────────
 REM Deteccion de Supermium (navegador compatible con Windows 8/antiguos).
 REM Si no se detecta, se abre el navegador por defecto del sistema.
-REM Podes fijar la ruta manualmente: SET SUPERMIUM_PATH=C:\ruta\supermium.exe
+REM Podes fijar la ruta manualmente: SET SUPERMIUM_PATH=C:\ruta\a\chrome.exe
 REM ─────────────────────────────────────────────
 SET "SUPERMIUM_PATH="
-IF EXIST "%ROOT%Supermium\Application\supermium.exe" SET "SUPERMIUM_PATH=%ROOT%Supermium\Application\supermium.exe"
-IF NOT DEFINED SUPERMIUM_PATH IF EXIST "%LOCALAPPDATA%\Supermium\Application\supermium.exe" SET "SUPERMIUM_PATH=%LOCALAPPDATA%\Supermium\Application\supermium.exe"
-IF NOT DEFINED SUPERMIUM_PATH IF EXIST "%ProgramFiles%\Supermium\Application\supermium.exe" SET "SUPERMIUM_PATH=%ProgramFiles%\Supermium\Application\supermium.exe"
-IF NOT DEFINED SUPERMIUM_PATH IF EXIST "%ProgramFiles(x86)%\Supermium\Application\supermium.exe" SET "SUPERMIUM_PATH=%ProgramFiles(x86)%\Supermium\Application\supermium.exe"
+IF NOT DEFINED SUPERMIUM_PATH CALL :buscar_supermium "%ROOT%Supermium"
+IF NOT DEFINED SUPERMIUM_PATH CALL :buscar_supermium "%ProgramFiles%\Supermium"
+IF NOT DEFINED SUPERMIUM_PATH CALL :buscar_supermium "%ProgramFiles(x86)%\Supermium"
+IF NOT DEFINED SUPERMIUM_PATH CALL :buscar_supermium "%LOCALAPPDATA%\Supermium"
+goto continuar
 
+:buscar_supermium
+IF DEFINED SUPERMIUM_PATH goto :eof
+REM El ejecutable puede llamarse supermium.exe o chrome.exe, y estar
+REM directamente en la carpeta o dentro de la subcarpeta Application
+IF EXIST "%~1\supermium.exe" SET "SUPERMIUM_PATH=%~1\supermium.exe"
+IF EXIST "%~1\chrome.exe" SET "SUPERMIUM_PATH=%~1\chrome.exe"
+IF EXIST "%~1\Application\supermium.exe" SET "SUPERMIUM_PATH=%~1\Application\supermium.exe"
+IF EXIST "%~1\Application\chrome.exe" SET "SUPERMIUM_PATH=%~1\Application\chrome.exe"
+goto :eof
+
+:continuar
 IF DEFINED SUPERMIUM_PATH (
     echo  Navegador detectado: Supermium
     start "" cmd /c "timeout /t 2 >nul && "%SUPERMIUM_PATH%" --app=http://127.0.0.1:8000 --new-window"
