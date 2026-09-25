@@ -142,84 +142,87 @@ export default function Departamentos() {
       </div>
 
       {/* Lista */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        {/* Cabecera */}
-        <div className="grid grid-cols-[2fr_2fr_1fr_auto] gap-4 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-          <span>Departamento</span>
-          <span>Dirección</span>
-          <span className="text-center">Estado</span>
-          <span className="w-32 text-center">Acciones</span>
-        </div>
-
-        {departamentos.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-            <Building2 size={40} className="mb-3 opacity-30" />
-            <p className="text-sm">No hay departamentos. Creá uno.</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-100">
-            {departamentos.map(dep => (
-              <div
-                key={dep.id_departamentos}
-                className="grid grid-cols-[2fr_2fr_1fr_auto] gap-4 px-4 py-3 items-center hover:bg-gray-50 transition-colors"
-              >
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]">
+          <thead className="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <tr>
+              <th className="text-left px-4 py-2.5">Departamento</th>
+              <th className="text-left px-4 py-2.5">Dirección</th>
+              <th className="text-center px-4 py-2.5">Estado</th>
+              <th className="text-center px-4 py-2.5">Acciones</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {departamentos.length === 0 ? (
+              <tr>
+                <td colSpan={4}>
+                  <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                    <Building2 size={40} className="mb-3 opacity-30" />
+                    <p className="text-sm">No hay departamentos. Creá uno.</p>
+                  </div>
+                </td>
+              </tr>
+            ) : departamentos.map(dep => (
+              <tr key={dep.id_departamentos} className="hover:bg-gray-50 transition-colors">
                 {/* Depto */}
-                <div className="min-w-0">
-                  <span className="font-semibold text-gray-800 text-sm">{formatDepto(dep.piso, dep.codigo)}</span>
-                </div>
+                <td className="px-4 py-3">
+                  <span className="font-semibold text-gray-800">{formatDepto(dep.piso, dep.codigo)}</span>
+                </td>
 
                 {/* Dirección */}
-                <div className="min-w-0">
+                <td className="px-4 py-3">
                   {dep.direccion ? (
-                    <span className="text-sm text-gray-600 truncate block">{dep.direccion}</span>
+                    <span className="text-gray-600 truncate block max-w-[320px]" title={dep.direccion}>{dep.direccion}</span>
                   ) : (
-                    <span className="text-sm text-gray-300 italic">Sin dirección</span>
+                    <span className="text-gray-300 italic">Sin dirección</span>
                   )}
-                </div>
+                </td>
 
                 {/* Estado */}
-                <div className="text-center">
+                <td className="px-4 py-3 text-center">
                   <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full ${dep.esta_ocupado ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>
                     <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${dep.esta_ocupado ? 'bg-red-500' : 'bg-green-500'}`} />
                     {dep.esta_ocupado ? 'Ocupado' : 'Libre'}
                   </span>
-                </div>
+                </td>
 
                 {/* Acciones */}
-                <div className="flex items-center gap-1 w-32 justify-center">
-                  <button
-                    onClick={() => abrirHistorial(dep)}
-                    className="flex items-center gap-1 px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition"
-                    title="Historial"
-                  >
-                    <History size={13} /> Historial
-                  </button>
-                  <button
-                    onClick={() => abrirPagos(dep)}
-                    className="flex items-center gap-1 px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition"
-                    title="Pagos"
-                  >
-                    <CreditCard size={13} /> Pagos
-                  </button>
-                  <button
-                    onClick={() => abrirEditar(dep)}
-                    className="p-1.5 hover:bg-gray-100 rounded-lg transition"
-                    title="Editar"
-                  >
-                    <Pencil size={14} className="text-gray-500" />
-                  </button>
-                  <button
-                    onClick={() => eliminar(dep)}
-                    className="p-1.5 hover:bg-red-50 rounded-lg transition"
-                    title="Eliminar"
-                  >
-                    <Trash2 size={14} className="text-red-400" />
-                  </button>
-                </div>
-              </div>
+                <td className="px-4 py-3">
+                  <div className="flex flex-wrap items-center justify-center gap-1 whitespace-nowrap">
+                    <button
+                      onClick={() => abrirHistorial(dep)}
+                      className="flex items-center gap-1 px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                      title="Historial"
+                    >
+                      <History size={13} /> Historial
+                    </button>
+                    <button
+                      onClick={() => abrirPagos(dep)}
+                      className="flex items-center gap-1 px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                      title="Pagos"
+                    >
+                      <CreditCard size={13} /> Pagos
+                    </button>
+                    <button
+                      onClick={() => abrirEditar(dep)}
+                      className="p-1.5 hover:bg-gray-100 rounded-lg transition"
+                      title="Editar"
+                    >
+                      <Pencil size={14} className="text-gray-500" />
+                    </button>
+                    <button
+                      onClick={() => eliminar(dep)}
+                      className="p-1.5 hover:bg-red-50 rounded-lg transition"
+                      title="Eliminar"
+                    >
+                      <Trash2 size={14} className="text-red-400" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
             ))}
-          </div>
-        )}
+          </tbody>
+        </table>
       </div>
 
       {/* Modal Crear/Editar */}

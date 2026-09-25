@@ -309,7 +309,7 @@ export default function Contratos() {
         <td className="px-4 py-3 text-center"><CobrosBadges c={c} /></td>
         <td className="px-4 py-3 text-center">{estadoBadge(c)}</td>
         <td className="px-4 py-3 text-center">
-          <div className="flex gap-1 justify-center">
+          <div className="flex gap-1 justify-center whitespace-nowrap">
             {c.estado === 'activo' && (
               <>
                 <button onClick={() => abrirEditar(c)} className="p-1.5 hover:bg-gray-100 rounded" title="Editar">
@@ -391,8 +391,8 @@ export default function Contratos() {
 
       {/* Tabla según tab activa */}
       {tab === 'activos' && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+          <table className="w-full text-sm min-w-[760px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Depto</th>
@@ -414,8 +414,8 @@ export default function Contratos() {
       )}
 
       {tab === 'finalizados' && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+          <table className="w-full text-sm min-w-[760px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Depto</th>

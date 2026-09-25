@@ -319,14 +319,14 @@ export default function Dashboard() {
             )}
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
             {historialLoading ? (
               <div className="py-12 text-center text-gray-500">Cargando...</div>
             ) : historial.length === 0 ? (
               <div className="py-12 text-center text-gray-400">No hay pagos registrados con esos filtros.</div>
             ) : (
               <>
-                <table className="w-full text-sm">
+                <table className="w-full text-sm min-w-[820px]">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
                       <th className="text-center px-4 py-3 font-semibold text-gray-600">Mes / Año</th>
@@ -399,13 +399,13 @@ export default function Dashboard() {
           No hay contratos activos para el mes actual.
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
           {/* Print header */}
           <div className="hidden print:block p-4 border-b">
             <h2 className="text-xl font-bold">Cobros — {mesActual}</h2>
           </div>
 
-          <table className="tabla-cobros w-full text-sm">
+          <table className="tabla-cobros w-full text-sm min-w-[760px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 {modoSeleccion && (
@@ -517,7 +517,7 @@ export default function Dashboard() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-center print:hidden">
-                      <div className="flex gap-1 justify-center">
+                      <div className="flex gap-1 justify-center whitespace-nowrap">
                         {!reg.pagado && item.estado_servicios === 'OK' && (
                           <button
                             onClick={() => setConfirmarPagoModal(item)}

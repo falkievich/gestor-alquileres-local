@@ -145,8 +145,8 @@ export default function Inquilinos() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="text-left px-4 py-3 font-semibold text-gray-600">Nombre</th>
@@ -166,7 +166,7 @@ export default function Inquilinos() {
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex gap-1 justify-center">
+                  <div className="flex gap-1 justify-center whitespace-nowrap">
                     <button onClick={() => abrirEditar(inq)} className="p-1.5 hover:bg-gray-100 rounded" title="Editar">
                       <Pencil size={14} className="text-gray-500" />
                     </button>
