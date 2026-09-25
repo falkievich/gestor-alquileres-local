@@ -44,8 +44,10 @@ CREATE TABLE contratos (
     fecha_inicio                DATE            NOT NULL,
     fecha_fin                   DATE            NOT NULL,
     estado                      VARCHAR(20)     NOT NULL DEFAULT 'activo',
-    alquiler_base_actual        INT             NOT NULL,
-    expensa_base_actual         INT                 NULL,
+    alquiler_base_inicial       INT                 NULL, -- Monto con el que comenzó el contrato (histórico, no se modifica por aumentos)
+    expensa_base_inicial        INT                 NULL, -- Expensa con la que comenzó el contrato (histórica, no se modifica por aumentos)
+    alquiler_base_actual        INT             NOT NULL, -- Monto que se cobra actualmente; base de cálculo de los próximos aumentos
+    expensa_base_actual         INT                 NULL, -- Expensa que se cobra actualmente; base de cálculo de los próximos aumentos
     tipo_aumento                VARCHAR(20)     NOT NULL DEFAULT 'MANUAL', -- Puede ser: MANUAL (utiliza porcentaje_aumento) o ICL (utiliza API del BCRA)
     porcentaje_aumento          DOUBLE          NOT NULL DEFAULT 0.0,
     periodicidad_aumento_meses  INT             NOT NULL DEFAULT 3,

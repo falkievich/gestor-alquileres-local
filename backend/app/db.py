@@ -20,6 +20,26 @@ engine = create_engine(
 
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
+    _migrar_columnas_contratos()
+
+
+def _migrar_columnas_contratos():
+    """
+    Migración liviana para bases SQLite ya existentes:
+    agrega las columnas *_base_inicial si todavía no existen.
+    """
+    from sqlalchemy import text
+
+    with engine.begin() as conn:
+        cols = [row[1] for row in conn.execute(text("PRAGMA table_info(contratos)"))]
+        if not cols:
+            return
+        if "alquiler_base_inicial" not in cols:
+            conn.execute(text(
+                "ALTER TABLE contratos ADD COLUMN alquiler_base_inicial INTEGER"))
+        if "expensa_base_inicial" not in cols:
+            conn.execute(text(
+                "ALTER TABLE contratos ADD COLUMN expensa_base_inicial INTEGER"))
 
 
 def get_session():

@@ -71,6 +71,8 @@ class Contrato(SQLModel, table=True):
     fecha_inicio: date
     fecha_fin: date
     estado: str = Field(default="activo", max_length=20)
+    alquiler_base_inicial: Optional[int] = Field(default=None, nullable=True)
+    expensa_base_inicial: Optional[int] = Field(default=None, nullable=True)
     alquiler_base_actual: int
     expensa_base_actual: Optional[int] = None
     porcentaje_aumento: float = Field(default=0.0)
@@ -91,6 +93,8 @@ class ContratoCreate(SQLModel):
     id_inquilinos: int
     fecha_inicio: date
     fecha_fin: date
+    alquiler_base_inicial: Optional[int] = None
+    expensa_base_inicial: Optional[int] = None
     alquiler_base_actual: int
     expensa_base_actual: Optional[int] = None
     porcentaje_aumento: float = 0.0
@@ -105,6 +109,8 @@ class ContratoCreate(SQLModel):
 class ContratoUpdate(SQLModel):
     fecha_inicio: Optional[date] = None
     fecha_fin: Optional[date] = None
+    alquiler_base_inicial: Optional[int] = None
+    expensa_base_inicial: Optional[int] = None
     alquiler_base_actual: Optional[int] = None
     expensa_base_actual: Optional[int] = None
     porcentaje_aumento: Optional[float] = None
@@ -124,6 +130,8 @@ class ContratoRead(SQLModel):
     fecha_inicio: date
     fecha_fin: date
     estado: str
+    alquiler_base_inicial: Optional[int] = None
+    expensa_base_inicial: Optional[int] = None
     alquiler_base_actual: int
     expensa_base_actual: Optional[int] = None
     porcentaje_aumento: float

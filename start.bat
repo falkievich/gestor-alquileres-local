@@ -31,8 +31,35 @@ IF NOT EXIST "%ROOT%frontend\dist\index.html" (
 REM Ir a la carpeta backend para que Python encuentre el modulo "app"
 cd /d "%ROOT%backend"
 
-REM Abrir el navegador despues de 2 segundos (en segundo plano)
-start "" cmd /c "timeout /t 2 >nul && start http://127.0.0.1:8000"
+REM ─────────────────────────────────────────────
+REM Deteccion de Supermium (navegador compatible con Windows 8/antiguos).
+REM Si no se detecta, se abre el navegador por defecto del sistema.
+REM Podes fijar la ruta manualmente: SET SUPERMIUM_PATH=C:\ruta\a\chrome.exe
+REM ─────────────────────────────────────────────
+SET "SUPERMIUM_PATH="
+IF NOT DEFINED SUPERMIUM_PATH CALL :buscar_supermium "%ROOT%Supermium"
+IF NOT DEFINED SUPERMIUM_PATH CALL :buscar_supermium "%ProgramFiles%\Supermium"
+IF NOT DEFINED SUPERMIUM_PATH CALL :buscar_supermium "%ProgramFiles(x86)%\Supermium"
+IF NOT DEFINED SUPERMIUM_PATH CALL :buscar_supermium "%LOCALAPPDATA%\Supermium"
+goto continuar
+
+:buscar_supermium
+IF DEFINED SUPERMIUM_PATH goto :eof
+REM El ejecutable puede llamarse supermium.exe o chrome.exe, y estar
+REM directamente en la carpeta o dentro de la subcarpeta Application
+IF EXIST "%~1\supermium.exe" SET "SUPERMIUM_PATH=%~1\supermium.exe"
+IF EXIST "%~1\chrome.exe" SET "SUPERMIUM_PATH=%~1\chrome.exe"
+IF EXIST "%~1\Application\supermium.exe" SET "SUPERMIUM_PATH=%~1\Application\supermium.exe"
+IF EXIST "%~1\Application\chrome.exe" SET "SUPERMIUM_PATH=%~1\Application\chrome.exe"
+goto :eof
+
+:continuar
+IF DEFINED SUPERMIUM_PATH (
+    echo  Navegador detectado: Supermium
+    start "" cmd /c "timeout /t 2 >nul && "%SUPERMIUM_PATH%" --app=http://127.0.0.1:8000 --new-window"
+) ELSE (
+    start "" cmd /c "timeout /t 2 >nul && start http://127.0.0.1:8000"
+)
 
 REM Ejecutar uvicorn con el Python embebido
 "%ROOT%python\python.exe" -m uvicorn app.main:app --host 127.0.0.1 --port 8000

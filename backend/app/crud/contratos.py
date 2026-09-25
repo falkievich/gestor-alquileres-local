@@ -5,6 +5,7 @@ from app.model.models import (
     Departamento, Inquilino, RegistroMensual
 )
 from fastapi import HTTPException
+from app.service.mes_service import get_mes_actual, calcular_total
 
 
 def get_contratos(session: Session) -> List[Contrato]:
@@ -35,6 +36,12 @@ def create_contrato(session: Session, data: ContratoCreate) -> Contrato:
             detail="Ya existe un contrato activo para este departamento."
         )
     contrato = Contrato.model_validate(data)
+    # Los montos iniciales son históricos: si no vienen informados
+    # (contrato nuevo, no "en curso"), arrancan con el valor actual.
+    if contrato.alquiler_base_inicial is None:
+        contrato.alquiler_base_inicial = contrato.alquiler_base_actual
+    if contrato.cobra_expensa and contrato.expensa_base_inicial is None:
+        contrato.expensa_base_inicial = contrato.expensa_base_actual
     session.add(contrato)
     # Marcar departamento como ocupado
     dep = session.get(Departamento, data.id_departamentos)
@@ -56,7 +63,47 @@ def update_contrato(session: Session, id: int, data: ContratoUpdate) -> Optional
     session.add(contrato)
     session.commit()
     session.refresh(contrato)
+    _sincronizar_registros_mensuales(session, contrato)
     return contrato
+
+
+def _sincronizar_registros_mensuales(session: Session, contrato: Contrato) -> None:
+    """
+    Si se edita el alquiler/expensa actual de un contrato, propaga el cambio
+    a los registros mensuales NO pagados y sin override del mes en curso en
+    adelante. Los meses históricos pagados no se modifican.
+    """
+    anio_actual, mes_actual = get_mes_actual()
+    registros = session.exec(
+        select(RegistroMensual).where(
+            RegistroMensual.id_contratos == contrato.id_contratos,
+            RegistroMensual.pagado == False  # noqa: E712
+        )
+    ).all()
+
+    for registro in registros:
+        if (registro.anio, registro.mes) < (anio_actual, mes_actual):
+            continue
+        cambio = False
+        if registro.alquiler_override is None and \
+                registro.alquiler_calculado != contrato.alquiler_base_actual:
+            registro.alquiler_calculado = contrato.alquiler_base_actual
+            cambio = True
+        if registro.expensa_override is None and contrato.cobra_expensa:
+            nueva_expensa = contrato.expensa_base_actual
+            if registro.expensa_calculada != nueva_expensa:
+                registro.expensa_calculada = nueva_expensa
+                cambio = True
+        if cambio:
+            alq_efectivo = registro.alquiler_override if registro.alquiler_override is not None \
+                else registro.alquiler_calculado
+            exp_efectiva = registro.expensa_override if registro.expensa_override is not None \
+                else registro.expensa_calculada
+            registro.total = calcular_total(
+                alq_efectivo, exp_efectiva, registro.agua, registro.luz)
+            session.add(registro)
+
+    session.commit()
 
 
 def cerrar_contrato(session: Session, id: int) -> Optional[Contrato]:

@@ -3,6 +3,7 @@ import api from '../lib/api'
 import type { Inquilino, InquilinoCreate, PagoItem } from '../lib/types'
 import { MESES, formatMoneda, formatFecha } from '../lib/types'
 import { Plus, Pencil, Trash2, X, Filter } from 'lucide-react'
+import { Label, clasesCampo, ErrorCamposModal } from '../lib/ui'
 
 type Modal = 'crear' | 'editar' | 'contratos' | 'pagos' | null
 
@@ -17,6 +18,9 @@ export default function Inquilinos() {
   const [form, setForm] = useState<InquilinoCreate>({ nombre_apellido: '', telefono: '', es_actual: true })
   const [busqueda, setBusqueda] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
+  const [errores, setErrores] = useState<Record<string, string>>({})
+  const [popupErrores, setPopupErrores] = useState<string[]>([])
+  const [saving, setSaving] = useState(false)
 
   function normalizar(texto: string) {
     return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -36,6 +40,8 @@ export default function Inquilinos() {
   function abrirCrear() {
     setForm({ nombre_apellido: '', telefono: '', es_actual: true })
     setErrorMsg('')
+    setErrores({})
+    setPopupErrores([])
     setModal('crear')
   }
 
@@ -43,6 +49,8 @@ export default function Inquilinos() {
     setSelected(inq)
     setForm({ nombre_apellido: inq.nombre_apellido, telefono: inq.telefono ?? '', es_actual: inq.es_actual })
     setErrorMsg('')
+    setErrores({})
+    setPopupErrores([])
     setModal('editar')
   }
 
@@ -71,18 +79,39 @@ export default function Inquilinos() {
   }
 
   async function guardar() {
+    if (saving) return
     setErrorMsg('')
-    if (modal === 'crear' && !form.nombre_apellido.trim()) {
-      setErrorMsg('Nombre y apellido es obligatorio.')
+    const e: Record<string, string> = {}
+    if (!form.nombre_apellido.trim()) e.nombre_apellido = 'Nombre y apellido es obligatorio.'
+    if (Object.keys(e).length > 0) {
+      setErrores(e)
+      setPopupErrores(Object.values(e))
       return
     }
-    if (modal === 'crear') {
-      await api.post('/inquilinos/', form)
-    } else if (modal === 'editar' && selected) {
-      await api.put(`/inquilinos/${selected.id_inquilinos}`, form)
+    setSaving(true)
+    try {
+      if (modal === 'crear') {
+        await api.post('/inquilinos/', form)
+      } else if (modal === 'editar' && selected) {
+        await api.put(`/inquilinos/${selected.id_inquilinos}`, form)
+      }
+      cargar()
+      setModal(null)
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Error al guardar'
+      setErrorMsg(msg)
+    } finally {
+      setSaving(false)
     }
-    cargar()
-    setModal(null)
+  }
+
+  function limpiarError(campo: string) {
+    setErrores(prev => {
+      if (!prev[campo]) return prev
+      const n = { ...prev }
+      delete n[campo]
+      return n
+    })
   }
 
   async function eliminar(inq: Inquilino) {
@@ -176,17 +205,17 @@ export default function Inquilinos() {
             {errorMsg && <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-600">{errorMsg}</div>}
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre y apellido *</label>
+                <Label required>Nombre y apellido</Label>
                 <input
                   type="text"
-                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                  className={clasesCampo(errores, 'nombre_apellido')}
                   value={form.nombre_apellido}
-                  onChange={e => setForm(f => ({ ...f, nombre_apellido: e.target.value }))}
+                  onChange={e => { limpiarError('nombre_apellido'); setForm(f => ({ ...f, nombre_apellido: e.target.value })) }}
                   placeholder="Juan García"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                <Label required={false}>Teléfono</Label>
                 <input
                   type="text"
                   className="w-full border rounded-lg px-3 py-2 text-sm"
@@ -208,11 +237,15 @@ export default function Inquilinos() {
             </div>
             <div className="flex gap-2 justify-end mt-5">
               <button onClick={() => setModal(null)} className="px-4 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100">Cancelar</button>
-              <button onClick={guardar} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Guardar</button>
+              <button onClick={guardar} disabled={saving} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
+                {saving ? 'Guardando...' : 'Guardar'}
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      <ErrorCamposModal errores={popupErrores} onCerrar={() => setPopupErrores([])} />
 
       {/* Modal Contratos */}
       {modal === 'contratos' && selected && (

@@ -309,6 +309,10 @@ def aplicar_aumento_si_corresponde(session: Session, contrato: Contrato, anio: i
             contrato.expensa_base_actual * factor)
     contrato.ultimo_aumento_anio = anio
     contrato.ultimo_aumento_mes = mes
+    # Actualizar tambien la fecha de ultimo aumento: queda como base del
+    # proximo periodo y evita que el mismo aumento se vuelva a aplicar
+    # cada vez que se abre el Dashboard en el mes de vigencia.
+    contrato.fecha_ultimo_aumento = date(anio, mes, 1)
     session.add(contrato)
     session.commit()
     session.refresh(contrato)
