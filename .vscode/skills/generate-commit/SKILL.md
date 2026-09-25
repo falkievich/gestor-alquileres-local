@@ -53,69 +53,36 @@ Debe ser breve, descriptivo y técnico pero entendible.
 
 Ejemplo:
 
-`Presupuesto de tokens por etapa: prompt real medido en vez de reserva estimada`
-
-No usar automáticamente prefijos como `feat:`, `fix:`, `refactor:` o similares.
-
-## Descripción
-
-Organizar la descripción en apartados según el área a la que pertenezcan los cambios.
-
-Usar el encabezado:
-
-`BACKEND`
-
-para los cambios correspondientes al backend.
-
-Si el proyecto tiene una carpeta de frontend y efectivamente cuenta con un frontend, usar también el encabezado:
-
-`FRONTEND`
-
-cuando existan cambios correspondientes al frontend.
-
-Los encabezados no están limitados únicamente a `BACKEND` y `FRONTEND`.
-
-Si existen cambios que no formen parte del backend ni del frontend, crear un apartado con un encabezado correspondiente a esa área, por ejemplo `INFRAESTRUCTURA`, `DOCUMENTACIÓN`, `CI/CD`, `BASE DE DATOS` u otro que describa correctamente los cambios realizados.
-
-No crear apartados vacíos ni encabezados para áreas que no tengan cambios sin comitear.
-
-Debajo de cada apartado, indicar cada archivo o grupo de archivos modificados y resumir sus cambios.
-
-Mantener la ruta completa.
-
-Si un archivo es nuevo, agregar `(nuevo)`.
-
-Se pueden agrupar archivos cuando hayan recibido cambios equivalentes.
-
-Para cada archivo o grupo usar normalmente entre 2 y 5 bullets.
-
-Los bullets deben:
-
-- explicar brevemente qué cambió;
-- tener un nivel técnico intermedio;
-- mencionar funciones, clases o variables cuando sea útil;
-- priorizar cambios funcionales, arquitectura, validaciones, tests y configuración;
-- evitar detalles triviales o explicaciones línea por línea.
-
-Ejemplo:
-
 BACKEND
 
-app/core/presupuesto.py (nuevo)
+backend/app/core/presupuesto.py (nuevo)
 - Centraliza el cálculo del presupuesto de tokens usando el prompt real y el margen disponible.
 - Incorpora `PresupuestoInsuficiente` para evitar llamadas que no entren correctamente en contexto.
 - Agrega `DesglosePrompt` como estructura compartida entre etapas.
 
-app/core/config.py
+backend/app/core/config.py
 - Agrega nuevos límites de salida y margen de seguridad configurables.
 - Retira las variables antiguas de los cálculos activos.
 
-tests/test_presupuesto.py (nuevo)
+backend/tests/test_presupuesto.py (nuevo)
 - Cubre la fórmula central de presupuesto y sus límites.
 - Verifica overrides y variables deprecadas.
 
-README.md, .env.example
-- Actualiza la configuración y documentación asociada al nuevo presupuesto de tokens.
+FRONTEND
+
+frontend/src/pages/Configuracion.tsx
+- Adapta la interfaz a los nuevos límites configurables.
+- Muestra los valores activos utilizados por el backend.
+
+INFRAESTRUCTURA
+
+.env.example
+- Agrega las nuevas variables de configuración requeridas por el proyecto.
+
+DOCUMENTACIÓN
+
+README.md
+- Actualiza la documentación asociada al nuevo presupuesto de tokens.
 
 ## Formato de salida
 
@@ -141,15 +108,22 @@ Título del commit
 
 BACKEND
 
-app/core/archivo.py
-- Descripción del cambio.
-- Descripción del cambio.
-- Descripción del cambio.
-
-app/services/otro_archivo.py
+backend/app/core/archivo.py
 - Descripción del cambio.
 - Descripción del cambio.
 
-tests/test_archivo.py
+FRONTEND
+
+frontend/src/pages/archivo.tsx
 - Descripción del cambio.
+- Descripción del cambio.
+
+INFRAESTRUCTURA
+
+Dockerfile
+- Descripción del cambio.
+
+DOCUMENTACIÓN
+
+README.md
 - Descripción del cambio.
