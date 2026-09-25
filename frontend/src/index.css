@@ -16,9 +16,10 @@
     padding-right: 0 !important;
   }
 
-  /* La tabla ocupa todo el ancho disponible */
+  /* La tabla ocupa todo el ancho disponible (anula min-widths de pantalla) */
   table {
     width: 100% !important;
+    min-width: 0 !important;
   }
 
   /* Celdas con menos padding horizontal para ganar espacio */

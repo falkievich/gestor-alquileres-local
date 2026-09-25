@@ -215,6 +215,21 @@ contrato que vence el 1° o el 31 de octubre "vence en octubre" de la misma form
 
 ---
 
+## Estándar de alineamiento de tablas
+
+Todas las tablas y grillas de la aplicación (incluidas las de los modales) siguen este
+criterio de alineamiento. El encabezado siempre usa la misma alineación que el contenido
+de su columna.
+
+- **Texto e identificación → izquierda:** Departamento, Inquilino / Nombre, Dirección, Teléfono.
+- **Fechas y períodos → centro:** Inicio, Vencimiento, Mes / Año, Periodicidad.
+- **Importes y porcentajes → izquierda** (con `whitespace-nowrap` para que no se corten): Alquiler, Expensa, Agua, Luz, Impuesto, Diferencia, % aplicado.
+- **Total → centro:** encabezado y contenido centrados.
+- **Estados, badges y tipos → centro:** Estado, Pago, Servicios, Incluye, Tipo, Activo / Finalizado / Por vencer / Cargado.
+- **Acciones → centro:** siempre como última columna, botones e íconos centrados en la celda.
+
+---
+
 ## Base de datos
 
 Todos los datos se guardan en la carpeta `base_de_datos/alquileres.sqlite`.

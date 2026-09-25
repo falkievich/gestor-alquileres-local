@@ -145,8 +145,8 @@ export default function Inquilinos() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="text-left px-4 py-3 font-semibold text-gray-600">Nombre</th>
@@ -166,7 +166,7 @@ export default function Inquilinos() {
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex gap-1 justify-center">
+                  <div className="flex gap-1 justify-center whitespace-nowrap">
                     <button onClick={() => abrirEditar(inq)} className="p-1.5 hover:bg-gray-100 rounded" title="Editar">
                       <Pencil size={14} className="text-gray-500" />
                     </button>
@@ -321,18 +321,18 @@ export default function Inquilinos() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 text-left">
-                    <th className="px-3 py-2">Mes</th>
+                    <th className="px-3 py-2 text-center">Mes</th>
                     <th className="px-3 py-2">Departamento</th>
-                    <th className="px-3 py-2 text-right">Total</th>
+                    <th className="px-3 py-2 text-center">Total</th>
                     <th className="px-3 py-2 text-center">Estado</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {pagos.map(p => (
                     <tr key={p.registro.id_registros_mensuales}>
-                      <td className="px-3 py-2">{MESES[p.registro.mes - 1]} {p.registro.anio}</td>
+                      <td className="px-3 py-2 text-center">{MESES[p.registro.mes - 1]} {p.registro.anio}</td>
                       <td className="px-3 py-2">{p.departamento?.piso} {p.departamento?.codigo}</td>
-                      <td className="px-3 py-2 text-right font-mono">{formatMoneda(p.registro.total)}</td>
+                      <td className="px-3 py-2 text-center font-mono whitespace-nowrap">{formatMoneda(p.registro.total)}</td>
                       <td className="px-3 py-2 text-center">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${p.registro.pagado ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                           {p.registro.pagado ? 'Pagado' : 'No pagado'}

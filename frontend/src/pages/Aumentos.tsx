@@ -320,9 +320,9 @@ function HistorialAumentos({
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="grid grid-cols-[1fr_2fr_1fr_1fr_1fr_1fr_1fr] gap-3 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-            <span>Mes / Ano</span>
+            <span className="text-center">Mes / Ano</span>
             <span>Departamento / Inquilino</span>
-            <span>Tipo</span>
+            <span className="text-center">Tipo</span>
             <span>% Aplicado</span>
             <span>Alquiler anterior</span>
             <span>Alquiler nuevo</span>
@@ -340,7 +340,7 @@ function HistorialAumentos({
                   key={item.registro.id_registros_mensuales}
                   className="grid grid-cols-[1fr_2fr_1fr_1fr_1fr_1fr_1fr] gap-3 px-4 py-3 items-center hover:bg-gray-50 transition-colors"
                 >
-                  <div className="text-sm font-medium text-gray-700">{mesLabel}</div>
+                  <div className="text-sm font-medium text-gray-700 text-center">{mesLabel}</div>
 
                   <div className="min-w-0">
                     <div className="font-semibold text-gray-800 text-sm truncate">{formatDepto(dep?.piso, dep?.codigo)}</div>
@@ -350,19 +350,19 @@ function HistorialAumentos({
                     </div>
                   </div>
 
-                  <div><TipoBadge tipo={item.contrato.tipo_aumento} /></div>
+                  <div className="text-center"><TipoBadge tipo={item.contrato.tipo_aumento} /></div>
 
-                  <div className="text-sm font-semibold text-gray-800">
+                  <div className="text-sm font-semibold text-gray-800 whitespace-nowrap">
                     {item.registro.porcentaje_aumento_usado != null ? `${item.registro.porcentaje_aumento_usado.toFixed(2)}%` : '-'}
                   </div>
 
-                  <div className="text-sm font-mono text-gray-600">
+                  <div className="text-sm font-mono text-gray-600 whitespace-nowrap">
                     {item.alquiler_anterior != null ? formatMoneda(item.alquiler_anterior) : <span className="text-gray-300 italic">N/D</span>}
                   </div>
 
-                  <div className="text-sm font-mono font-semibold text-blue-700">{formatMoneda(item.alquiler_nuevo)}</div>
+                  <div className="text-sm font-mono font-semibold text-blue-700 whitespace-nowrap">{formatMoneda(item.alquiler_nuevo)}</div>
 
-                  <div className="text-sm font-mono">
+                  <div className="text-sm font-mono whitespace-nowrap">
                     {diferencia != null ? <span className="text-green-600 font-semibold">+{formatMoneda(diferencia)}</span> : <span className="text-gray-300">-</span>}
                   </div>
                 </div>

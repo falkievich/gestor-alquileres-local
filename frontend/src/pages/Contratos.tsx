@@ -303,13 +303,13 @@ export default function Contratos() {
           )}
         </td>
         <td className="px-4 py-3 text-left text-gray-700">{inqNombre(c.id_inquilinos)}</td>
-        <td className="px-4 py-3 text-left text-gray-600 text-sm">{formatFecha(c.fecha_inicio)}</td>
-        <td className="px-4 py-3 text-left text-gray-600 text-sm">{formatFecha(c.fecha_fin)}</td>
-        <td className="px-4 py-3 text-left font-mono">{formatMoneda(c.alquiler_base_actual)}</td>
+        <td className="px-4 py-3 text-center text-gray-600 text-sm">{formatFecha(c.fecha_inicio)}</td>
+        <td className="px-4 py-3 text-center text-gray-600 text-sm">{formatFecha(c.fecha_fin)}</td>
+        <td className="px-4 py-3 text-left font-mono whitespace-nowrap">{formatMoneda(c.alquiler_base_actual)}</td>
         <td className="px-4 py-3 text-center"><CobrosBadges c={c} /></td>
         <td className="px-4 py-3 text-center">{estadoBadge(c)}</td>
         <td className="px-4 py-3 text-center">
-          <div className="flex gap-1 justify-center">
+          <div className="flex gap-1 justify-center whitespace-nowrap">
             {c.estado === 'activo' && (
               <>
                 <button onClick={() => abrirEditar(c)} className="p-1.5 hover:bg-gray-100 rounded" title="Editar">
@@ -391,14 +391,14 @@ export default function Contratos() {
 
       {/* Tabla según tab activa */}
       {tab === 'activos' && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+          <table className="w-full text-sm min-w-[760px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Depto</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Inquilino</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Inicio</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Vence</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Inicio</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Vence</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Alquiler</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Incluye</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Estado</th>
@@ -414,14 +414,14 @@ export default function Contratos() {
       )}
 
       {tab === 'finalizados' && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+          <table className="w-full text-sm min-w-[760px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Depto</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Inquilino</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Inicio</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Vencimiento</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Inicio</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Vencimiento</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Alquiler</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Incluye</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Estado</th>

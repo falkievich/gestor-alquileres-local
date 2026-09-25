@@ -82,7 +82,7 @@ export function ModalShell({
   z?: string
 }) {
   return (
-    <div className={`fixed inset-0 bg-black/40 overflow-y-auto ${z} print:hidden`}>
+    <div className={`fixed inset-0 bg-black/40 overflow-auto ${z} print:hidden`}>
       <div className="flex min-h-full items-center justify-center p-4">
         <div className={`modal-grande bg-white rounded-xl shadow-xl w-full ${max}`}>
           {children}
