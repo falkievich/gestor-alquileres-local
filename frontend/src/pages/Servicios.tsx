@@ -3,6 +3,7 @@ import api from '../lib/api'
 import type { DashboardItem } from '../lib/types'
 import { MESES } from '../lib/types'
 import { Save } from 'lucide-react'
+import { useToast } from '../lib/ui'
 
 function formatDepto(piso: string | undefined, codigo: string | undefined) {
   if (!piso || !codigo) return `${piso ?? ''} ${codigo ?? ''}`.trim()
@@ -18,11 +19,11 @@ interface ServicioRow {
 }
 
 export default function Servicios() {
+  const toast = useToast()
   const [items, setItems] = useState<ServicioRow[]>([])
   const [valores, setValores] = useState<Record<number, { agua: string; luz: string }>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<number | null>(null)
-  const [successMsg, setSuccessMsg] = useState('')
   const [anioMes, setAnioMes] = useState('')
 
   async function cargar() {
@@ -47,17 +48,22 @@ export default function Servicios() {
 
   useEffect(() => { cargar() }, [])
 
-  async function guardarFila(idReg: number, cobra_agua: boolean, cobra_luz: boolean) {
+  async function guardarFila(idReg: number, cobra_agua: boolean, cobra_luz: boolean, cargado: boolean) {
     setSaving(idReg)
     const v = valores[idReg] ?? {}
     const params: Record<string, string> = {}
     if (cobra_agua && v.agua !== '') params.agua = v.agua
     if (cobra_luz && v.luz !== '') params.luz = v.luz
-    await api.post('/servicios/guardar', null, { params: { id_registro: idReg, ...params } })
-    setSuccessMsg('Guardado correctamente')
-    setTimeout(() => setSuccessMsg(''), 3000)
-    setSaving(null)
-    cargar()
+    try {
+      await api.post('/servicios/guardar', null, { params: { id_registro: idReg, ...params } })
+      toast(cargado ? 'Se actualizaron los servicios correctamente' : 'Se guardaron los servicios correctamente')
+      cargar()
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Error al guardar'
+      toast(msg, 'error')
+    } finally {
+      setSaving(null)
+    }
   }
 
   return (
@@ -68,10 +74,6 @@ export default function Servicios() {
           {anioMes && <p className="text-gray-500 text-sm mt-1">Mes actual: {anioMes}</p>}
         </div>
       </div>
-
-      {successMsg && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">{successMsg}</div>
-      )}
 
       {loading ? (
         <div className="text-center py-12 text-gray-500">Cargando...</div>
@@ -151,7 +153,7 @@ export default function Servicios() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       <button
-                        onClick={() => guardarFila(idReg, item.contrato.cobra_agua, item.contrato.cobra_luz)}
+                        onClick={() => guardarFila(idReg, item.contrato.cobra_agua, item.contrato.cobra_luz, cargado)}
                         disabled={saving === idReg}
                         className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 mx-auto"
                       >

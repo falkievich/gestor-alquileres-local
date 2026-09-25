@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
+import { CheckCircle2, AlertCircle } from 'lucide-react'
 
 export function Asterisco() {
   return (
@@ -41,8 +42,8 @@ export function ErrorCamposModal({
 }) {
   if (errores.length === 0) return null
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60]">
-      <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+    <ModalShell max="max-w-lg" z="z-[60]">
+      <div className="p-6">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xl">⚠️</span>
           <h3 className="font-bold text-lg text-red-700">Faltan campos obligatorios</h3>
@@ -62,6 +63,80 @@ export function ErrorCamposModal({
           </button>
         </div>
       </div>
+    </ModalShell>
+  )
+}
+
+/**
+ * Contenedor de modal con scroll accesible con zoom:
+ * el wrapper interior (min-h-full) permite llegar al tope/inferior
+ * del contenido aunque este sea más alto que la ventana.
+ */
+export function ModalShell({
+  children,
+  max = 'max-w-lg',
+  z = 'z-50',
+}: {
+  children: ReactNode
+  max?: string
+  z?: string
+}) {
+  return (
+    <div className={`fixed inset-0 bg-black/40 overflow-y-auto ${z} print:hidden`}>
+      <div className="flex min-h-full items-center justify-center p-4">
+        <div className={`modal-grande bg-white rounded-xl shadow-xl w-full ${max}`}>
+          {children}
+        </div>
+      </div>
     </div>
   )
+}
+
+/* ──────────────────────────────────────────────
+   Toasts globales de éxito/error
+   ────────────────────────────────────────────── */
+
+interface ToastItem {
+  id: number
+  mensaje: string
+  tipo: 'exito' | 'error'
+}
+
+type MostrarToast = (mensaje: string, tipo?: 'exito' | 'error') => void
+
+const ToastContext = createContext<MostrarToast>(() => {})
+
+export function ToastProvider({ children }: { children: ReactNode }) {
+  const [toasts, setToasts] = useState<ToastItem[]>([])
+
+  const mostrar = useCallback((mensaje: string, tipo: 'exito' | 'error' = 'exito') => {
+    const id = Date.now() + Math.random()
+    setToasts(prev => [...prev, { id, mensaje, tipo }])
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id))
+    }, 3000)
+  }, [])
+
+  return (
+    <ToastContext.Provider value={mostrar}>
+      {children}
+      <div className="fixed bottom-6 right-6 z-[80] space-y-2 print:hidden">
+        {toasts.map(t => (
+          <div
+            key={t.id}
+            className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium text-white ${
+              t.tipo === 'exito' ? 'bg-green-600' : 'bg-red-600'
+            }`}
+          >
+            {t.tipo === 'exito' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+            {t.mensaje}
+          </div>
+        ))}
+      </div>
+    </ToastContext.Provider>
+  )
+}
+
+export function useToast(): MostrarToast {
+  return useContext(ToastContext)
 }

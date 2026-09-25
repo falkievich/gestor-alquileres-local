@@ -59,11 +59,27 @@ No usar automáticamente prefijos como `feat:`, `fix:`, `refactor:` o similares.
 
 ## Descripción
 
-Usar únicamente el encabezado:
+Organizar la descripción en apartados según el área a la que pertenezcan los cambios.
+
+Usar el encabezado:
 
 `BACKEND`
 
-Debajo, indicar cada archivo o grupo de archivos modificados y resumir sus cambios.
+para los cambios correspondientes al backend.
+
+Si el proyecto tiene una carpeta de frontend y efectivamente cuenta con un frontend, usar también el encabezado:
+
+`FRONTEND`
+
+cuando existan cambios correspondientes al frontend.
+
+Los encabezados no están limitados únicamente a `BACKEND` y `FRONTEND`.
+
+Si existen cambios que no formen parte del backend ni del frontend, crear un apartado con un encabezado correspondiente a esa área, por ejemplo `INFRAESTRUCTURA`, `DOCUMENTACIÓN`, `CI/CD`, `BASE DE DATOS` u otro que describa correctamente los cambios realizados.
+
+No crear apartados vacíos ni encabezados para áreas que no tengan cambios sin comitear.
+
+Debajo de cada apartado, indicar cada archivo o grupo de archivos modificados y resumir sus cambios.
 
 Mantener la ruta completa.
 
@@ -116,7 +132,7 @@ Reglas obligatorias:
 - NO agregar explicaciones antes o después.
 - Cada cambio debe comenzar obligatoriamente con `- `.
 - Mantener las rutas de archivos como texto normal.
-- El encabezado `BACKEND` debe escribirse como texto normal.
+- Los encabezados de apartados como `BACKEND`, `FRONTEND`, `INFRAESTRUCTURA` u otros deben escribirse como texto normal.
 - El título debe escribirse como texto normal.
 
 Formato exacto esperado:

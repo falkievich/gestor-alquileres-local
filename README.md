@@ -159,6 +159,62 @@ Desde acá podés:
 
 ---
 
+## Funcionamiento interno
+
+Explicaciones sobre el comportamiento de la app que no son visibles a simple vista.
+
+---
+
+### Orden de los listados
+
+- **Dashboard:** los cobros del mes se listan por orden de id de contrato. El historial de pagos se ordena del mes más reciente al más viejo.
+- **Departamentos:** del más nuevo cargado al más viejo (id descendente).
+- **Inquilinos:** del más nuevo cargado al más viejo (id descendente).
+- **Contratos:** del más nuevo cargado al más viejo (id descendente), en las pestañas de activos y finalizados.
+- **Servicios:** por orden de contrato activo (id descendente).
+- **Aumentos:** tarjetas por orden de contrato; el historial de aumentos del más reciente al más viejo.
+
+---
+
+### Estados de un contrato (Activo / Por vencer / Vencido)
+
+El estado se calcula comparando la **fecha de vencimiento** del contrato contra la fecha
+de hoy, contando **meses de calendario** (no se tiene en cuenta el día del mes: un
+contrato que vence el 1° o el 31 de octubre "vence en octubre" de la misma forma).
+
+- **Vencido:** la fecha de vencimiento ya pasó (`fecha_fin < hoy`).
+- **Por vencer:** quedan **3 meses o menos** desde hoy hasta el mes de vencimiento.
+  La regla se aplica igual en la sección Contratos (badge del listado) y en la
+  sección Aumentos (badge de la tarjeta).
+- **Activo:** cualquier otro caso (con fecha de vencimiento futura).
+
+---
+
+### Cómo funciona el cobro mensual (conteo de meses)
+
+- El sistema **no genera los cobros con un cronjob**: el registro mensual de un contrato
+  se crea la **primera vez que se pide el mes**, es decir al abrir el **Dashboard** o la
+  sección **Servicios** (si el contrato cobra agua/luz). A partir de ahí el valor queda
+  **congelado** en la base de datos para ese mes.
+- Al crear el registro se toma el **alquiler/expensa/impuesto vigentes** del contrato en
+  ese momento. Si después se edita el contrato, solo se recalculan los registros
+  **no pagados y sin ajuste manual** del mes en adelante.
+- El **total** del mes es: alquiler + expensa + agua + luz + impuesto (impuesto es fijo,
+  no participa de los aumentos). Los ajustes manuales (overrides) suman o restan sobre
+  esos valores sin tocar el contrato.
+- Los **aumentos** se aplican automáticamente cuando se abre el Dashboard en el **mes de
+  vigencia** del próximo aumento (último aumento + periodicidad). El nuevo valor entra
+  en el registro de ese mes y los siguientes; el mes anterior queda con el valor viejo.
+  Cada aumento aplicado queda registrado con el porcentaje usado (`porcentaje_aumento_usado`)
+  y se muestra en el historial de la sección Aumentos.
+- Para los contratos cargados como **"ya en curso"**, la base temporal del próximo aumento
+  es la **fecha del último aumento** indicada por el usuario (y, después de cada aumento
+  aplicado, el sistema actualiza esa fecha a la del nuevo aumento).
+- Un **aumento no se aplica** si el contrato finaliza antes de que llegue el mes de
+  vigencia: la sección Aumentos lo marca con la tarjeta en rojo ("sin más aumentos").
+
+---
+
 ## Base de datos
 
 Todos los datos se guardan en la carpeta `base_de_datos/alquileres.sqlite`.

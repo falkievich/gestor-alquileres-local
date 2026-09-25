@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import api from '../lib/api'
 import type { DashboardItem, Inquilino } from '../lib/types'
 import { formatMoneda, MESES } from '../lib/types'
+import { useToast, ModalShell } from '../lib/ui'
 import {
   CheckCircle2, AlertCircle, XCircle, Eye, EyeOff,
   RefreshCw, Printer, HardDriveDownload, SlidersHorizontal, ListChecks, Filter
@@ -23,11 +24,11 @@ interface HistorialPagoItem {
 }
 
 export default function Dashboard() {
+  const toast = useToast()
   const [items, setItems] = useState<DashboardItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showPagados, setShowPagados] = useState(false)
-  const [backupMsg, setBackupMsg] = useState('')
   const [overrideModal, setOverrideModal] = useState<DashboardItem | null>(null)
   const [overrideData, setOverrideData] = useState({ alquiler_delta: '', expensa_delta: '', nota_override: '' })
   const [confirmarPagoModal, setConfirmarPagoModal] = useState<DashboardItem | null>(null)
@@ -85,22 +86,28 @@ export default function Dashboard() {
   }, [showPagados])
 
   async function marcarPagado(id: number) {
-    await api.post(`/dashboard/registros/${id}/pagado`)
-    cargar()
+    try {
+      await api.post(`/dashboard/registros/${id}/pagado`)
+      toast('El cobro se registró correctamente')
+      cargar()
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Error al registrar el cobro'
+      toast(msg, 'error')
+    }
   }
 
   async function desmarcarPagado(id: number) {
     await api.post(`/dashboard/registros/${id}/desmarcar-pagado`)
+    toast('Se desmarcó el cobro correctamente')
     cargar()
   }
 
   async function crearBackup() {
     try {
       const res = await api.post('/backup/')
-      setBackupMsg(`✅ Backup creado: ${res.data.archivo}`)
-      setTimeout(() => setBackupMsg(''), 5000)
+      toast(`Backup creado: ${res.data.archivo}`)
     } catch {
-      setBackupMsg('❌ Error al crear backup')
+      toast('Error al crear backup', 'error')
     }
   }
 
@@ -118,6 +125,7 @@ export default function Dashboard() {
     }
     if (overrideData.nota_override !== '') params.nota_override = overrideData.nota_override
     await api.post(`/dashboard/registros/${idReg}/override`, null, { params })
+    toast('Se guardó el ajuste correctamente')
     setOverrideModal(null)
     cargar()
   }
@@ -126,6 +134,7 @@ export default function Dashboard() {
     if (!overrideModal) return
     const idReg = overrideModal.registro.id_registros_mensuales
     await api.post(`/dashboard/registros/${idReg}/override`, null, { params: {} })
+    toast('Se restauraron los valores originales')
     setOverrideModal(null)
     cargar()
   }
@@ -143,6 +152,7 @@ export default function Dashboard() {
       return api.post(`/dashboard/registros/${idReg}/override`, null, { params })
     })
     await Promise.all(promises)
+    toast('Ajuste masivo aplicado correctamente')
     setAjusteMasivoModal(false)
     setModoSeleccion(false)
     setSeleccionados(new Set())
@@ -183,7 +193,9 @@ export default function Dashboard() {
       <div className="flex items-center justify-between mb-6 print:hidden">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">{showPagados ? 'Historial de pagos' : 'Dashboard'}</h2>
-          {!showPagados && mesActual && <p className="text-gray-500 text-sm mt-1">Mes actual: {mesActual}</p>}
+          {!showPagados && mesActual && (
+            <p className="text-3xl font-extrabold text-blue-700 mt-1">Mes actual: {mesActual}</p>
+          )}
         </div>
         <div className="flex gap-2 flex-wrap justify-end">
           <button
@@ -233,12 +245,6 @@ export default function Dashboard() {
           </button>
         </div>
       </div>
-
-      {backupMsg && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 print:hidden">
-          {backupMsg}
-        </div>
-      )}
 
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
@@ -330,6 +336,7 @@ export default function Dashboard() {
                       <th className="text-right px-4 py-3 font-semibold text-gray-600">Expensa</th>
                       <th className="text-right px-4 py-3 font-semibold text-gray-600">Agua</th>
                       <th className="text-right px-4 py-3 font-semibold text-gray-600">Luz</th>
+                      <th className="text-right px-4 py-3 font-semibold text-gray-600">Impuesto</th>
                       <th className="text-center px-4 py-3 font-semibold text-gray-600">Total</th>
                       <th className="text-center px-4 py-3 font-semibold text-gray-600 print:hidden"></th>
                     </tr>
@@ -364,6 +371,9 @@ export default function Dashboard() {
                           <td className="px-4 py-3 text-right font-mono">
                             {h.contrato.cobra_luz ? (reg.luz != null ? formatMoneda(reg.luz) : <span className="text-gray-400">-</span>) : <span className="text-gray-400">-</span>}
                           </td>
+                          <td className="px-4 py-3 text-right font-mono">
+                            {reg.impuesto != null ? formatMoneda(reg.impuesto) : <span className="text-gray-400">-</span>}
+                          </td>
                           <td className="px-4 py-3 text-center font-bold font-mono text-green-700">{formatMoneda(h.total)}</td>
                           <td className="px-4 py-3 text-center print:hidden">
                             {(reg.alquiler_override != null || reg.expensa_override != null) && (
@@ -395,7 +405,7 @@ export default function Dashboard() {
             <h2 className="text-xl font-bold">Cobros — {mesActual}</h2>
           </div>
 
-          <table className="w-full text-sm">
+          <table className="tabla-cobros w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 {modoSeleccion && (
@@ -415,8 +425,9 @@ export default function Dashboard() {
                 <th className="text-right px-4 py-3 font-semibold text-gray-600">Expensa</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Agua</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Luz</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Impuesto</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Total</th>
-                <th className="text-center px-4 py-3 font-semibold text-gray-600">Servicios</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600 col-servicios-impresion">Servicios</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Pago</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600 print:hidden">Acciones</th>
               </tr>
@@ -474,8 +485,11 @@ export default function Dashboard() {
                     <td className="px-4 py-3 text-center font-mono">
                       {item.contrato.cobra_luz ? (reg.luz != null ? formatMoneda(reg.luz) : <span className="text-orange-500">Pend.</span>) : <span className="text-gray-400">-</span>}
                     </td>
+                    <td className="px-4 py-3 text-center font-mono">
+                      {reg.impuesto != null ? formatMoneda(reg.impuesto) : <span className="text-gray-400">-</span>}
+                    </td>
                     <td className="px-4 py-3 text-center font-bold font-mono">{formatMoneda(item.total)}</td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3 text-center col-servicios-impresion">
                       {item.estado_servicios === 'OK' ? (
                         <span className="inline-flex items-center gap-1 text-green-600 text-xs font-semibold">
                           <CheckCircle2 size={14} /> OK
@@ -561,8 +575,8 @@ export default function Dashboard() {
         const delta = ajusteMasivoData.alquiler_delta !== '' ? Number(ajusteMasivoData.alquiler_delta) : 0
         const itemsSeleccionados = visibles.filter(i => seleccionados.has(i.registro.id_registros_mensuales))
         return (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 print:hidden">
-            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+          <ModalShell max="max-w-lg">
+            <div className="p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="flex-shrink-0 w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
                   <ListChecks size={20} className="text-yellow-600" />
@@ -618,9 +632,9 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Nota (opcional)</label>
-                  <input
-                    type="text"
-                    className="w-full border rounded-lg px-3 py-2 text-sm"
+                  <textarea
+                    rows={3}
+                    className="w-full border rounded-lg px-3 py-2 text-sm resize-y"
                     value={ajusteMasivoData.nota_override}
                     onChange={e => setAjusteMasivoData(d => ({ ...d, nota_override: e.target.value }))}
                     placeholder="Motivo del ajuste..."
@@ -644,7 +658,7 @@ export default function Dashboard() {
                 </button>
               </div>
             </div>
-          </div>
+          </ModalShell>
         )
       })()}
 
@@ -659,8 +673,8 @@ export default function Dashboard() {
         const expFinal = expBase + expDelta
         const tieneOverride = reg.alquiler_override != null || reg.expensa_override != null
         return (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 print:hidden">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+        <ModalShell max="max-w-lg">
+          <div className="p-6">
             <h3 className="font-bold text-lg mb-1">
               Ajuste del mes — {formatDepto(overrideModal.departamento?.piso, overrideModal.departamento?.codigo)}
             </h3>
@@ -707,9 +721,9 @@ export default function Dashboard() {
               )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nota</label>
-                <input
-                  type="text"
-                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                <textarea
+                  rows={3}
+                  className="w-full border rounded-lg px-3 py-2 text-sm resize-y"
                   value={overrideData.nota_override}
                   onChange={e => setOverrideData(d => ({ ...d, nota_override: e.target.value }))}
                   placeholder="Motivo del ajuste..."
@@ -733,8 +747,8 @@ export default function Dashboard() {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
+            </div>
+          </ModalShell>
         )
       })()}
 
@@ -745,8 +759,8 @@ export default function Dashboard() {
         const tieneAlqAjuste = reg.alquiler_override != null
         const tieneExpAjuste = reg.expensa_override != null
         return (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 print:hidden">
-            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+          <ModalShell max="max-w-lg">
+            <div className="p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="flex-shrink-0 w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
                   <SlidersHorizontal size={20} className="text-yellow-600" />
@@ -828,18 +842,19 @@ export default function Dashboard() {
                 </button>
               </div>
             </div>
-          </div>
+          </ModalShell>
         )
       })()}
 
       {/* Modal confirmación cobro */}
       {confirmarPagoModal && (() => {
         const item = confirmarPagoModal
+        const reg = item.registro
         const dep = item.departamento
         const depLabel = [dep?.piso && dep?.codigo ? `${dep.piso} — ${dep.codigo}` : [dep?.piso, dep?.codigo].filter(Boolean).join(' '), dep?.direccion].filter(Boolean).join(' · ')
         return (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 print:hidden">
-            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
+          <ModalShell max="max-w-lg">
+            <div className="p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
                   <CheckCircle2 size={20} className="text-green-600" />
@@ -853,9 +868,39 @@ export default function Dashboard() {
                 {item.inquilino?.nombre_apellido}
               </p>
               <p className="text-sm text-gray-500 mb-3">{depLabel}</p>
-              <div className="bg-gray-50 rounded-lg px-4 py-2 mb-5 text-center">
-                <span className="text-xs text-gray-500 uppercase tracking-wide">Total a cobrar</span>
-                <p className="text-2xl font-bold text-gray-800 mt-0.5">{formatMoneda(item.total)}</p>
+              <div className="bg-gray-50 rounded-lg px-4 py-3 mb-5 text-sm">
+                <div className="flex justify-between py-0.5">
+                  <span className="text-gray-500">Alquiler</span>
+                  <span className="font-mono text-gray-700">{formatMoneda(reg.alquiler_override ?? reg.alquiler_calculado)}</span>
+                </div>
+                {item.contrato.cobra_expensa && (
+                  <div className="flex justify-between py-0.5">
+                    <span className="text-gray-500">Expensa</span>
+                    <span className="font-mono text-gray-700">{formatMoneda(reg.expensa_override ?? reg.expensa_calculada)}</span>
+                  </div>
+                )}
+                {item.contrato.cobra_agua && reg.agua != null && (
+                  <div className="flex justify-between py-0.5">
+                    <span className="text-gray-500">Agua</span>
+                    <span className="font-mono text-gray-700">{formatMoneda(reg.agua)}</span>
+                  </div>
+                )}
+                {item.contrato.cobra_luz && reg.luz != null && (
+                  <div className="flex justify-between py-0.5">
+                    <span className="text-gray-500">Luz</span>
+                    <span className="font-mono text-gray-700">{formatMoneda(reg.luz)}</span>
+                  </div>
+                )}
+                {reg.impuesto != null && (
+                  <div className="flex justify-between py-0.5">
+                    <span className="text-gray-500">Impuesto</span>
+                    <span className="font-mono text-gray-700">{formatMoneda(reg.impuesto)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between border-t border-gray-200 mt-2 pt-2">
+                  <span className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Total</span>
+                  <span className="text-xl font-bold text-gray-800">{formatMoneda(item.total)}</span>
+                </div>
               </div>
               <div className="flex gap-3">
                 <button
@@ -875,7 +920,7 @@ export default function Dashboard() {
                 </button>
               </div>
             </div>
-          </div>
+          </ModalShell>
         )
       })()}
     </div>

@@ -26,7 +26,7 @@ def create_db_and_tables():
 def _migrar_columnas_contratos():
     """
     Migración liviana para bases SQLite ya existentes:
-    agrega las columnas *_base_inicial si todavía no existen.
+    agrega columnas nuevas si todavía no existen.
     """
     from sqlalchemy import text
 
@@ -40,6 +40,14 @@ def _migrar_columnas_contratos():
         if "expensa_base_inicial" not in cols:
             conn.execute(text(
                 "ALTER TABLE contratos ADD COLUMN expensa_base_inicial INTEGER"))
+        if "impuesto_fijo" not in cols:
+            conn.execute(text(
+                "ALTER TABLE contratos ADD COLUMN impuesto_fijo INTEGER"))
+
+        cols_reg = [row[1] for row in conn.execute(text("PRAGMA table_info(registros_mensuales)"))]
+        if cols_reg and "impuesto" not in cols_reg:
+            conn.execute(text(
+                "ALTER TABLE registros_mensuales ADD COLUMN impuesto INTEGER"))
 
 
 def get_session():

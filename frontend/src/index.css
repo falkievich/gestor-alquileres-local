@@ -26,6 +26,57 @@
     padding-left: 6px !important;
     padding-right: 6px !important;
   }
+
+  /* ── Vista de impresión de la tabla de cobros del Dashboard ── */
+  /* Ocultar la columna "Servicios" al imprimir */
+  .col-servicios-impresion {
+    display: none !important;
+  }
+
+  /* Sin líneas verticales entre columnas */
+  .tabla-cobros th,
+  .tabla-cobros td {
+    border-left: none !important;
+    border-right: none !important;
+  }
+
+  /* Separadores horizontales más gruesos y visibles por fila/inquilino */
+  .tabla-cobros thead th {
+    border-bottom: 2px solid #555 !important;
+  }
+  .tabla-cobros tbody tr {
+    border-top: none !important;
+    border-bottom: 1.5px solid #555 !important;
+  }
+}
+
+/* ─────────────────────────────────────────────
+   Modales más grandes (escala moderada).
+   CSS sin layer: tiene prioridad sobre las utilidades
+   de Tailwind, así escala inputs/labels/botones sin
+   tocar el markup de cada modal.
+   ───────────────────────────────────────────── */
+.modal-grande {
+  font-size: 1.0625rem;
+  line-height: 1.5;
+}
+.modal-grande h3 {
+  font-size: 1.3rem;
+}
+.modal-grande label {
+  font-size: 1rem;
+}
+.modal-grande input,
+.modal-grande textarea,
+.modal-grande select {
+  font-size: 1rem;
+  padding-top: 0.65rem;
+  padding-bottom: 0.65rem;
+}
+.modal-grande button {
+  font-size: 1rem;
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
 }
 
 a:hover {

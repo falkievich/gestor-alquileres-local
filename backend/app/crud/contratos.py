@@ -94,13 +94,17 @@ def _sincronizar_registros_mensuales(session: Session, contrato: Contrato) -> No
             if registro.expensa_calculada != nueva_expensa:
                 registro.expensa_calculada = nueva_expensa
                 cambio = True
+        nuevo_impuesto = contrato.impuesto_fijo
+        if registro.impuesto != nuevo_impuesto:
+            registro.impuesto = nuevo_impuesto
+            cambio = True
         if cambio:
             alq_efectivo = registro.alquiler_override if registro.alquiler_override is not None \
                 else registro.alquiler_calculado
             exp_efectiva = registro.expensa_override if registro.expensa_override is not None \
                 else registro.expensa_calculada
             registro.total = calcular_total(
-                alq_efectivo, exp_efectiva, registro.agua, registro.luz)
+                alq_efectivo, exp_efectiva, registro.agua, registro.luz, registro.impuesto)
             session.add(registro)
 
     session.commit()

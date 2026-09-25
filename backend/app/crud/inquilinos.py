@@ -4,7 +4,9 @@ from app.model.models import Inquilino, InquilinoCreate, InquilinoUpdate
 
 
 def get_inquilinos(session: Session) -> List[Inquilino]:
-    results = session.exec(select(Inquilino)).all()
+    results = session.exec(
+        select(Inquilino).order_by(Inquilino.id_inquilinos.desc())
+    ).all()
     # Ordenar: actuales primero
     return sorted(results, key=lambda x: (not x.es_actual, x.nombre_apellido))
 

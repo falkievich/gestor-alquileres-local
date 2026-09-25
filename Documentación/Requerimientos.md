@@ -86,6 +86,10 @@ No requiere ningún servidor de base de datos. El archivo SQLite es portátil y 
 - Para desinstalar basta con borrar la carpeta del proyecto
 - La interfaz es responsiva y funcional en navegadores modernos
 - El sistema debe soportar impresión del dashboard desde el navegador
+- Feedback unificado: cada operación exitosa (guardar, editar, eliminar, cobrar, ajustes,
+  backup, etc.) muestra un toast global en verde con el mensaje correspondiente a la acción
+- Los modales son compatibles con zoom del navegador: siempre puede verse y navegarse
+  el contenido completo
 
 ---
 
@@ -103,7 +107,7 @@ detalle de lo que debe abonar ese mes.
 
 - Departamento e inquilino
 - Monto de alquiler calculado (con indicación si tiene ajuste manual aplicado)
-- Expensas, agua y luz (si aplican al contrato)
+- Expensa, agua, luz e impuesto (si aplican al contrato)
 - Total a cobrar del mes
 - Estado: pendiente de pago o pagado
 - Nota de ajuste (si se ingresó una al aplicar override)
@@ -141,7 +145,7 @@ Botón **Restaurar** para volver a los valores calculados originalmente si ya te
 
 Muestra el resumen del mes a cobrar antes de confirmar:
 
-- Alquiler, expensa, agua, luz y total
+- Alquiler, expensa, agua, luz, impuesto y total
 - Nota de ajuste si existe
 - Botones: **Confirmar** / **Cancelar**
 
@@ -289,6 +293,7 @@ Incluye filtros por inquilino, departamento y estado.
 - **Fecha de inicio**
 - **Fecha de vencimiento**
 - **Alquiler base actual ($)**
+- **Impuesto ($):** campo opcional. Monto fijo mensual, NO participa de los aumentos.
 - **Expensas base ($):** campo opcional, se habilita con el toggle "Cobra expensas"
 - **Cobra expensas / agua / luz:** toggles para indicar qué servicios incluye el contrato
 - **Porcentaje de aumento (%):** obligatorio cuando el tipo de aumento es MANUAL

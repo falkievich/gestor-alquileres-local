@@ -6,6 +6,7 @@ import Contratos from './pages/Contratos'
 import Servicios from './pages/Servicios'
 import Aumentos from './pages/Aumentos.tsx'
 import deptoManagerLogo from './icons/DeptoManager-2.svg'
+import { ToastProvider } from './lib/ui'
 import {
   LayoutDashboard,
   Building2,
@@ -26,7 +27,8 @@ const navItems = [
 
 function App() {
   return (
-    <BrowserRouter>
+    <ToastProvider>
+      <BrowserRouter>
       <div className="flex min-h-screen bg-gray-50">
         <aside className="w-60 bg-slate-800 text-white flex flex-col shadow-lg">
           <div className="px-6 py-5 border-b border-slate-700">
@@ -70,7 +72,8 @@ function App() {
           </Routes>
         </main>
       </div>
-    </BrowserRouter>
+      </BrowserRouter>
+    </ToastProvider>
   )
 }
 

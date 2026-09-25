@@ -7,6 +7,7 @@ from app.service.mes_service import (
     get_mes_actual,
     calcular_estado_servicios,
     calcular_total,
+    preparar_registro_mes,
 )
 from app.model.models import Contrato, ContratoRead, RegistroMensual
 from typing import Optional
@@ -28,9 +29,9 @@ def listar_pendientes(session: Session = Depends(get_session)):
     for contrato in contratos:
         if not contrato.cobra_agua and not contrato.cobra_luz:
             continue
-        registro = crud_registros.get_registro(session, contrato.id_contratos, anio, mes)
-        if not registro:
-            continue
+        # Genera el registro del mes si aún no existe (igual que el Dashboard),
+        # así los servicios aparecen apenas se crea el contrato.
+        registro, _ = preparar_registro_mes(session, contrato, anio, mes)
         if registro.pagado:
             continue
         estado = calcular_estado_servicios(contrato, registro)
@@ -75,7 +76,8 @@ def guardar_servicios(
 
     alq_efectivo = registro.alquiler_override if registro.alquiler_override is not None else registro.alquiler_calculado
     exp_efectiva = registro.expensa_override if registro.expensa_override is not None else registro.expensa_calculada
-    total_calculado = calcular_total(alq_efectivo, exp_efectiva, registro.agua, registro.luz)
+    total_calculado = calcular_total(
+        alq_efectivo, exp_efectiva, registro.agua, registro.luz, registro.impuesto)
 
     update = RegistroMensualUpdate(
         agua=registro.agua,

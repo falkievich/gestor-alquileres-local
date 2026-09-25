@@ -197,7 +197,8 @@ def calcular_total(
     alquiler: int,
     expensa: Optional[int],
     agua: Optional[int],
-    luz: Optional[int]
+    luz: Optional[int],
+    impuesto: Optional[int] = None
 ) -> int:
     total = alquiler
     if expensa is not None:
@@ -206,6 +207,8 @@ def calcular_total(
         total += agua
     if luz is not None:
         total += luz
+    if impuesto is not None:
+        total += impuesto
     return total
 
 
@@ -215,7 +218,8 @@ def get_or_create_registro(session: Session, contrato: Contrato, anio: int, mes:
     if not registro:
         alquiler = calcular_alquiler(contrato, anio, mes)
         expensa = calcular_expensa(contrato)
-        total = calcular_total(alquiler, expensa, None, None)
+        impuesto = contrato.impuesto_fijo
+        total = calcular_total(alquiler, expensa, None, None, impuesto)
         from app.model.models import RegistroMensualCreate
         data = RegistroMensualCreate(
             id_contratos=contrato.id_contratos,
@@ -223,10 +227,39 @@ def get_or_create_registro(session: Session, contrato: Contrato, anio: int, mes:
             mes=mes,
             alquiler_calculado=alquiler,
             expensa_calculada=expensa,
+            impuesto=impuesto,
             total=total
         )
         registro = crud_registros.create_registro(session, data)
     return registro
+
+
+def preparar_registro_mes(session: Session, contrato: Contrato, anio: int, mes: int) -> Tuple[RegistroMensual, Optional[float]]:
+    """
+    Prepara el registro mensual de un contrato para el mes dado:
+    1. Aplica el aumento si corresponde (mutando el contrato).
+    2. Crea (o reutiliza) el registro mensual con los valores congelados.
+
+    Usada por el Dashboard y por la sección Servicios para que ambos
+    generen el registro del mes de la misma forma.
+    Retorna (registro, porcentaje_aplicado).
+    """
+    porcentaje_aplicado = aplicar_aumento_si_corresponde(
+        session, contrato, anio, mes)
+    session.refresh(contrato)
+    registro = get_or_create_registro(session, contrato, anio, mes)
+
+    # Guardar porcentaje_aumento_usado en el registro si se aplicó un aumento
+    # y el registro todavía no tiene ese valor guardado.
+    if porcentaje_aplicado is not None and registro.porcentaje_aumento_usado is None:
+        from app.crud.registros import RegistroMensualUpdate
+        crud_registros.update_registro(
+            session, registro.id_registros_mensuales,
+            RegistroMensualUpdate(porcentaje_aumento_usado=porcentaje_aplicado)
+        )
+        registro.porcentaje_aumento_usado = porcentaje_aplicado
+
+    return registro, porcentaje_aplicado
 
 
 def calcular_estado_servicios(contrato: Contrato, registro: RegistroMensual) -> str:
@@ -338,6 +371,7 @@ def calcular_proximo_aumento(contrato: Contrato) -> Dict[str, Any]:
             "alquiler_actual": contrato.alquiler_base_actual, "alquiler_nuevo": None,
             "requires_fecha_ultimo": False,
             "tipo_aumento": tipo,
+            "aumento_fuera_de_contrato": False,
         }
     if tipo == 'MANUAL' and contrato.porcentaje_aumento == 0:
         return {
@@ -345,6 +379,7 @@ def calcular_proximo_aumento(contrato: Contrato) -> Dict[str, Any]:
             "alquiler_actual": contrato.alquiler_base_actual, "alquiler_nuevo": None,
             "requires_fecha_ultimo": False,
             "tipo_aumento": tipo,
+            "aumento_fuera_de_contrato": False,
         }
 
     # Determinar la base (mismo orden que corresponde_aumento)
@@ -364,6 +399,11 @@ def calcular_proximo_aumento(contrato: Contrato) -> Dict[str, Any]:
     fecha_vigencia = date(proximo_anio, proximo_mes, 1)
     hoy = date.today()
 
+    # Si el próximo aumento cae en un mes posterior al mes de vencimiento
+    # del contrato, no se aplicará nunca: el contrato termina antes.
+    fin = contrato.fecha_fin
+    aumento_fuera_de_contrato = (proximo_anio, proximo_mes) > (fin.year, fin.month)
+
     if tipo == 'ICL':
         icl_info = _calcular_icl_aumento(
             contrato, base_anio, base_mes, proximo_anio, proximo_mes)
@@ -375,6 +415,7 @@ def calcular_proximo_aumento(contrato: Contrato) -> Dict[str, Any]:
             "expensa_actual": contrato.expensa_base_actual,
             "requires_fecha_ultimo": False,
             "tipo_aumento": "ICL",
+            "aumento_fuera_de_contrato": aumento_fuera_de_contrato,
         }
         resultado.update(icl_info)
         if not icl_info.get("icl_pendiente"):
@@ -414,4 +455,5 @@ def calcular_proximo_aumento(contrato: Contrato) -> Dict[str, Any]:
         "requires_fecha_ultimo": False,
         "tipo_aumento": "MANUAL",
         "icl_pendiente": False,
+        "aumento_fuera_de_contrato": aumento_fuera_de_contrato,
     }

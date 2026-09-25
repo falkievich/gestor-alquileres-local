@@ -9,9 +9,8 @@ from app.crud import registros as crud_registros
 from app.model.models import ContratoRead, DepartamentoRead, InquilinoRead, RegistroMensualRead
 from app.service.mes_service import (
     get_mes_actual,
-    get_or_create_registro,
+    preparar_registro_mes,
     calcular_estado_servicios,
-    aplicar_aumento_si_corresponde,
     calcular_proximo_aumento,
     calcular_alquiler,
     calcular_expensa,
@@ -33,24 +32,10 @@ def get_dashboard(session: Session = Depends(get_session)):
         if contrato.fecha_inicio > hoy:
             continue
 
-        # Aplicar aumento si corresponde antes de crear el registro.
-        # Retorna el porcentaje aplicado, o None si no hubo aumento.
-        porcentaje_aplicado = aplicar_aumento_si_corresponde(
+        # Aplica el aumento si corresponde y crea (o reutiliza) el registro
+        # mensual con los valores congelados (misma lógica que Servicios).
+        registro, porcentaje_aplicado = preparar_registro_mes(
             session, contrato, anio, mes)
-        # Refrescar contrato con posibles cambios
-        session.refresh(contrato)
-
-        registro = get_or_create_registro(session, contrato, anio, mes)
-
-        # Guardar porcentaje_aumento_usado en el registro si se aplicó un aumento
-        # y el registro todavía no tiene ese valor guardado.
-        if porcentaje_aplicado is not None and registro.porcentaje_aumento_usado is None:
-            from app.crud.registros import RegistroMensualUpdate as RMU
-            crud_registros.update_registro(
-                session, registro.id_registros_mensuales,
-                RMU(porcentaje_aumento_usado=porcentaje_aplicado)
-            )
-            registro.porcentaje_aumento_usado = porcentaje_aplicado
 
         alq_efectivo = registro.alquiler_override if registro.alquiler_override is not None else registro.alquiler_calculado
         exp_efectiva = registro.expensa_override if registro.expensa_override is not None else registro.expensa_calculada
@@ -59,7 +44,8 @@ def get_dashboard(session: Session = Depends(get_session)):
             alq_efectivo,
             exp_efectiva,
             registro.agua,
-            registro.luz
+            registro.luz,
+            registro.impuesto
         )
 
         # Actualizar total en DB
@@ -186,5 +172,5 @@ def override_registro(
     alq_efectivo = registro.alquiler_override if registro.alquiler_override is not None else registro.alquiler_calculado
     exp_efectiva = registro.expensa_override if registro.expensa_override is not None else registro.expensa_calculada
     total_calculado = calcular_total(
-        alq_efectivo, exp_efectiva, registro.agua, registro.luz)
+        alq_efectivo, exp_efectiva, registro.agua, registro.luz, registro.impuesto)
     return crud_registros.update_registro(session, id_registro, RegistroMensualUpdate(total=total_calculado))

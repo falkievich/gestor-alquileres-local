@@ -56,7 +56,7 @@ goto :eof
 :continuar
 IF DEFINED SUPERMIUM_PATH (
     echo  Navegador detectado: Supermium
-    start "" cmd /c "timeout /t 2 >nul && "%SUPERMIUM_PATH%" --app=http://127.0.0.1:8000 --new-window"
+    start "" cmd /c "timeout /t 2 >nul && "%SUPERMIUM_PATH%" http://127.0.0.1:8000"
 ) ELSE (
     start "" cmd /c "timeout /t 2 >nul && start http://127.0.0.1:8000"
 )
