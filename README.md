@@ -168,12 +168,3 @@ Todos los datos se guardan en la carpeta `base_de_datos/alquileres.sqlite`.
   archivos se guardan en la carpeta `backups/` con nombre `alquileres_YYYY-MM-DD_HH-mm.sqlite`.
 
 ---
-
-## Desarrollo y pruebas
-
-- Revisá los endpoints en `backend/app/routers/` y las páginas en `frontend/src/pages/`.
-- Para ejecutar tests (si se agregan), crear un entorno virtual en `backend/.venv` y usar pytest.
-
----
-
-Si necesitás que incluya secciones adicionales (ej. guía de empaquetado paso a paso, lista de comandos de mantenimiento o ejemplos de API), decímelo y lo agrego.
