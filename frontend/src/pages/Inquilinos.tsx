@@ -3,11 +3,12 @@ import api from '../lib/api'
 import type { Inquilino, InquilinoCreate, PagoItem } from '../lib/types'
 import { MESES, formatMoneda, formatFecha } from '../lib/types'
 import { Plus, Pencil, Trash2, X, Filter } from 'lucide-react'
-import { Label, clasesCampo, ErrorCamposModal } from '../lib/ui'
+import { Label, clasesCampo, ErrorCamposModal, ModalShell, useToast } from '../lib/ui'
 
 type Modal = 'crear' | 'editar' | 'contratos' | 'pagos' | null
 
 export default function Inquilinos() {
+  const toast = useToast()
   const [inquilinos, setInquilinos] = useState<Inquilino[]>([])
   const [modal, setModal] = useState<Modal>(null)
   const [selected, setSelected] = useState<Inquilino | null>(null)
@@ -92,8 +93,10 @@ export default function Inquilinos() {
     try {
       if (modal === 'crear') {
         await api.post('/inquilinos/', form)
+        toast('Se guardó el inquilino correctamente')
       } else if (modal === 'editar' && selected) {
         await api.put(`/inquilinos/${selected.id_inquilinos}`, form)
+        toast('Se actualizaron los cambios correctamente')
       }
       cargar()
       setModal(null)
@@ -117,6 +120,7 @@ export default function Inquilinos() {
   async function eliminar(inq: Inquilino) {
     if (!confirm(`¿Eliminar ${inq.nombre_apellido}?`)) return
     await api.delete(`/inquilinos/${inq.id_inquilinos}`)
+    toast('Se eliminó el inquilino correctamente')
     cargar()
   }
 
@@ -196,8 +200,8 @@ export default function Inquilinos() {
 
       {/* Modal Crear/Editar */}
       {(modal === 'crear' || modal === 'editar') && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+        <ModalShell max="max-w-lg">
+          <div className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-lg">{modal === 'crear' ? 'Nuevo inquilino' : 'Editar inquilino'}</h3>
               <button onClick={() => setModal(null)}><X size={18} className="text-gray-500" /></button>
@@ -242,15 +246,15 @@ export default function Inquilinos() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalShell>
       )}
 
       <ErrorCamposModal errores={popupErrores} onCerrar={() => setPopupErrores([])} />
 
       {/* Modal Contratos */}
       {modal === 'contratos' && selected && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto">
+        <ModalShell max="max-w-xl">
+          <div className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-lg">Contratos — {selected.nombre_apellido}</h3>
               <button onClick={() => setModal(null)}><X size={18} className="text-gray-500" /></button>
@@ -284,13 +288,13 @@ export default function Inquilinos() {
               </table>
             )}
           </div>
-        </div>
+        </ModalShell>
       )}
 
       {/* Modal Pagos */}
       {modal === 'pagos' && selected && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+        <ModalShell max="max-w-3xl">
+          <div className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-lg">Pagos — {selected.nombre_apellido}</h3>
               <button onClick={() => setModal(null)}><X size={18} className="text-gray-500" /></button>
@@ -340,7 +344,7 @@ export default function Inquilinos() {
               </table>
             )}
           </div>
-        </div>
+        </ModalShell>
       )}
     </div>
   )

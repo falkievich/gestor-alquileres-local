@@ -3,7 +3,7 @@ import api from '../lib/api'
 import type { Contrato, ContratoCreate, Departamento, Inquilino } from '../lib/types'
 import { formatMoneda, formatFecha } from '../lib/types'
 import { Plus, Pencil, X, Download, Lock, FileText, Archive } from 'lucide-react'
-import { Label, clasesCampo, ErrorCamposModal } from '../lib/ui'
+import { Label, clasesCampo, ErrorCamposModal, ModalShell, useToast } from '../lib/ui'
 
 function formatDepto(piso: string | undefined, codigo: string | undefined) {
   if (!piso || !codigo) return `${piso ?? ''} ${codigo ?? ''}`.trim()
@@ -28,6 +28,24 @@ function estadoBadge(contrato: Contrato) {
   return <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-gray-100 text-gray-500">Finalizado</span>
 }
 
+function CobrosBadges({ c }: { c: Contrato }) {
+  const badges: { texto: string; clase: string }[] = []
+  if (c.cobra_expensa) badges.push({ texto: 'Expensa', clase: 'bg-purple-100 text-purple-700' })
+  if (c.impuesto_fijo != null) badges.push({ texto: 'Impuesto', clase: 'bg-gray-200 text-gray-700' })
+  if (c.cobra_agua) badges.push({ texto: 'Agua', clase: 'bg-sky-100 text-sky-700' })
+  if (c.cobra_luz) badges.push({ texto: 'Luz', clase: 'bg-yellow-100 text-yellow-700' })
+  if (badges.length === 0) return <span className="text-gray-300 text-sm">—</span>
+  return (
+    <div className="flex gap-1 justify-center flex-wrap">
+      {badges.map(b => (
+        <span key={b.texto} className={`text-xs px-2 py-0.5 rounded-full font-semibold ${b.clase}`}>
+          {b.texto}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 const emptyForm: ContratoCreate = {
   id_departamentos: 0,
   id_inquilinos: 0,
@@ -42,11 +60,13 @@ const emptyForm: ContratoCreate = {
   cobra_expensa: false,
   cobra_agua: false,
   cobra_luz: false,
+  impuesto_fijo: undefined,
   tipo_aumento: undefined,
   fecha_ultimo_aumento: undefined,
 }
 
 export default function Contratos() {
+  const toast = useToast()
   const [contratos, setContratos] = useState<Contrato[]>([])
   const [departamentos, setDepartamentos] = useState<Departamento[]>([])
   const [inquilinos, setInquilinos] = useState<Inquilino[]>([])
@@ -110,6 +130,7 @@ export default function Contratos() {
       expensa_base_inicial: c.expensa_base_inicial ?? c.expensa_base_actual,
       alquiler_base_actual: c.alquiler_base_actual,
       expensa_base_actual: c.expensa_base_actual,
+      impuesto_fijo: c.impuesto_fijo,
       porcentaje_aumento: c.porcentaje_aumento,
       periodicidad_aumento_meses: c.periodicidad_aumento_meses,
       cobra_expensa: c.cobra_expensa,
@@ -195,11 +216,13 @@ export default function Contratos() {
       if (modal === 'crear') {
         const res = await api.post('/contratos/', form)
         contratoId = res.data.id_contratos
+        toast('Se guardó el contrato correctamente')
       } else if (modal === 'editar' && selected) {
         const { id_departamentos, id_inquilinos, ...editData } = form
         void id_departamentos; void id_inquilinos
         await api.put(`/contratos/${selected.id_contratos}`, editData)
         contratoId = selected.id_contratos
+        toast('Se actualizaron los cambios correctamente')
       } else return
 
       // Subir archivo si se seleccionó
@@ -227,6 +250,7 @@ export default function Contratos() {
   async function cerrar(c: Contrato) {
     if (!confirm('¿Cerrar este contrato?')) return
     await api.post(`/contratos/${c.id_contratos}/cerrar`)
+    toast('El contrato se cerró correctamente')
     cargar()
   }
 
@@ -282,6 +306,7 @@ export default function Contratos() {
         <td className="px-4 py-3 text-left text-gray-600 text-sm">{formatFecha(c.fecha_inicio)}</td>
         <td className="px-4 py-3 text-left text-gray-600 text-sm">{formatFecha(c.fecha_fin)}</td>
         <td className="px-4 py-3 text-left font-mono">{formatMoneda(c.alquiler_base_actual)}</td>
+        <td className="px-4 py-3 text-center"><CobrosBadges c={c} /></td>
         <td className="px-4 py-3 text-center">{estadoBadge(c)}</td>
         <td className="px-4 py-3 text-center">
           <div className="flex gap-1 justify-center">
@@ -375,6 +400,7 @@ export default function Contratos() {
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Inicio</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Vence</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Alquiler</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Incluye</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Estado</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Acciones</th>
               </tr>
@@ -397,6 +423,7 @@ export default function Contratos() {
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Inicio</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Vencimiento</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Alquiler</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Incluye</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Estado</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Acciones</th>
               </tr>
@@ -411,10 +438,14 @@ export default function Contratos() {
 
       {/* Modal Crear/Editar */}
       {modal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 overflow-y-auto py-6">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl mx-4">
+        <ModalShell max="max-w-3xl">
+          <div className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg">{modal === 'crear' ? 'Nuevo contrato' : 'Editar contrato'}</h3>
+              <h3 className="font-bold text-lg">
+                {modal === 'crear'
+                  ? 'Nuevo contrato'
+                  : `Editar contrato — ${selected ? inqNombre(selected.id_inquilinos) : ''}`}
+              </h3>
               <button onClick={() => setModal(null)}><X size={18} className="text-gray-500" /></button>
             </div>
             {errorMsg && <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-600">{errorMsg}</div>}
@@ -494,6 +525,15 @@ export default function Contratos() {
                   />
                 </div>
               )}
+              <div>
+                <Label required={false}>Impuesto ($)</Label>
+                <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
+                  value={form.impuesto_fijo || ''}
+                  onChange={e => setForm(f => ({ ...f, impuesto_fijo: Number(e.target.value) || undefined }))}
+                  placeholder="Opcional. Ej: 5000"
+                />
+                <p className="mt-1 text-xs text-gray-400">Monto fijo mensual. No recibe aumentos.</p>
+              </div>
               <div>
                 <Label required>Tipo de aumento</Label>
                 <select
@@ -662,7 +702,7 @@ export default function Contratos() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalShell>
       )}
 
       <ErrorCamposModal errores={popupErrores} onCerrar={() => setPopupErrores([])} />

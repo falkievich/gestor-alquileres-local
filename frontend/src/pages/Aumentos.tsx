@@ -8,7 +8,6 @@ import {
   XCircle,
   Clock,
   CheckCircle2,
-  ChevronRight,
   History,
   Filter,
 } from 'lucide-react'
@@ -51,13 +50,21 @@ function ProximosAumentos({ items }: { items: AumentoItem[] }) {
         const esICL = (p.tipo_aumento ?? item.contrato.tipo_aumento) === 'ICL'
         const iclPendiente = esICL && p.icl_pendiente
         const iclCalculado = esICL && !iclPendiente && !!p.icl_calculado
+        const fueraDeContrato = !!p.aumento_fuera_de_contrato
         const diferencia = p.alquiler_nuevo != null ? p.alquiler_nuevo - p.alquiler_actual : null
         const porcentaje = p.porcentaje
+        const diferenciaExpensa = p.expensa_nueva != null && p.expensa_actual != null
+          ? p.expensa_nueva - p.expensa_actual
+          : null
 
         return (
           <div
             key={item.contrato.id_contratos}
-            className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+            className={`rounded-xl shadow-sm overflow-hidden border ${
+              fueraDeContrato
+                ? 'bg-red-50 border-red-300'
+                : 'bg-white border-gray-200'
+            }`}
           >
             <div className="px-5 py-4">
               <div className="flex items-start justify-between gap-4 mb-3">
@@ -75,6 +82,11 @@ function ProximosAumentos({ items }: { items: AumentoItem[] }) {
                     {item.alerta === 'Por vencer' && (
                       <span className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700 font-semibold">
                         <AlertTriangle size={11} /> Por vencer
+                      </span>
+                    )}
+                    {fueraDeContrato && (
+                      <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-red-200 text-red-800 font-semibold">
+                        <XCircle size={11} /> Sin más aumentos
                       </span>
                     )}
                   </div>
@@ -108,7 +120,7 @@ function ProximosAumentos({ items }: { items: AumentoItem[] }) {
               </div>
 
               <div className="grid grid-cols-4 gap-3">
-                <div className="bg-gray-50 rounded-lg px-3 py-2.5">
+                <div className={`bg-gray-50 rounded-lg px-3 py-2.5 ${item.contrato.cobra_expensa && p.expensa_actual != null ? 'row-span-2' : ''}`}>
                   <p className="text-xs text-gray-400 mb-0.5">Periodicidad</p>
                   <p className="text-sm font-medium text-gray-700">{item.contrato.periodicidad_aumento_meses} meses</p>
                 </div>
@@ -139,16 +151,37 @@ function ProximosAumentos({ items }: { items: AumentoItem[] }) {
                     <p className="text-sm text-gray-400">-</p>
                   )}
                 </div>
-              </div>
 
-              {!iclPendiente && item.contrato.cobra_expensa && p.expensa_actual != null && p.expensa_nueva != null && (
-                <div className="mt-3 flex gap-4 text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
-                  <span>Expensa actual: <strong>{formatMoneda(p.expensa_actual)}</strong></span>
-                  <ChevronRight size={14} className="text-gray-400 self-center" />
-                  <span>Expensa nueva: <strong className="text-blue-700">{formatMoneda(p.expensa_nueva)}</strong></span>
-                  <span className="text-green-600 font-semibold">+{formatMoneda(p.expensa_nueva - p.expensa_actual)}</span>
-                </div>
-              )}
+                {item.contrato.cobra_expensa && p.expensa_actual != null && (
+                  <>
+                    <div className="bg-gray-50 rounded-lg px-3 py-2.5">
+                      <p className="text-xs text-gray-400 mb-0.5">Expensa actual</p>
+                      <p className="text-sm font-mono font-semibold text-gray-800">{formatMoneda(p.expensa_actual)}</p>
+                    </div>
+                    <div className={`rounded-lg px-3 py-2.5 ${iclPendiente ? 'bg-amber-50' : p.expensa_nueva ? 'bg-blue-50' : 'bg-gray-50'}`}>
+                      <p className="text-xs text-gray-400 mb-0.5">Expensa nueva</p>
+                      {iclPendiente ? (
+                        <span className="text-amber-600 text-sm flex items-center gap-1"><Clock size={12} /> Pendiente</span>
+                      ) : p.expensa_nueva != null ? (
+                        <p className="text-sm font-mono font-semibold text-blue-700">{formatMoneda(p.expensa_nueva)}</p>
+                      ) : (
+                        <p className="text-sm text-gray-400">-</p>
+                      )}
+                    </div>
+                    <div className={`rounded-lg px-3 py-2.5 ${!iclPendiente && diferenciaExpensa != null ? 'bg-green-50' : 'bg-gray-50'}`}>
+                      <p className="text-xs text-gray-400 mb-0.5">Diferencia</p>
+                      {diferenciaExpensa != null && !iclPendiente ? (
+                        <div>
+                          <p className="text-sm font-mono font-semibold text-green-600">+{formatMoneda(diferenciaExpensa)}</p>
+                          {porcentaje != null && <p className="text-xs text-gray-400">{porcentaje.toFixed(2)}%</p>}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-400">-</p>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
 
             {p.requires_fecha_ultimo && (
@@ -158,6 +191,18 @@ function ProximosAumentos({ items }: { items: AumentoItem[] }) {
                   <span>
                     Este contrato ya lleva un tiempo en curso pero no tiene registrado el último aumento.
                     Edita el contrato e indica la fecha del último aumento para que el sistema calcule correctamente el próximo.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {fueraDeContrato && (
+              <div className="px-5 pb-4">
+                <div className="flex items-start gap-2 p-3 bg-red-100 border border-red-300 rounded-lg text-sm text-red-800">
+                  <XCircle size={15} className="shrink-0 mt-0.5 text-red-600" />
+                  <span>
+                    Este contrato finaliza el <span className="font-semibold">{formatFecha(item.contrato.fecha_fin)}</span>,
+                    antes del próximo aumento ({proximoLabel(item)}). No se le aplicará más aumentos.
                   </span>
                 </div>
               </div>

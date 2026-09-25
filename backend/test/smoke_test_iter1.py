@@ -43,17 +43,39 @@ check("actual guardado", r.json()["alquiler_base_actual"] == 650000)
 check("expensa inicial", r.json().get("expensa_base_inicial") == 30000)
 
 # 4. Crear contrato NORMAL (sin en curso) -> inicial debe == actual
+#    Con impuesto_fijo de 5000 y cobra_luz para probar servicios + impuesto
 r = client.post("/departamentos/", json={"piso": "Piso 1", "codigo": "TEST2"})
 id_dep2 = r.json()["id_departamentos"]
 r = client.post("/contratos/", json={
     "id_departamentos": id_dep2, "id_inquilinos": id_inq,
-    "fecha_inicio": "2026-01-01", "fecha_fin": "2027-01-01",
-    "alquiler_base_actual": 100000, "tipo_aumento": "MANUAL",
+    "fecha_inicio": "2026-01-01", "fecha_fin": "2026-10-31",
+    "alquiler_base_actual": 100000, "impuesto_fijo": 5000,
+    "cobra_luz": True, "tipo_aumento": "MANUAL",
     "porcentaje_aumento": 5.0, "periodicidad_aumento_meses": 6,
+    "fecha_ultimo_aumento": "2026-09-01",
 })
 check("crear contrato normal", r.status_code == 201, str(r.json()))
 id_cto2 = r.json()["id_contratos"]
 check("normal: inicial==actual", r.json()["alquiler_base_inicial"] == 100000)
+check("impuesto guardado", r.json()["impuesto_fijo"] == 5000)
+
+# 4b. Servicios SIN pasar por el dashboard: el registro se genera al pedir servicios
+r = client.get("/servicios/pendientes")
+check("servicios ok", r.status_code == 200)
+fila = next((i for i in r.json() if i["contrato"]["id_contratos"] == id_cto2), None)
+check("servicio visible sin pasar por dashboard", fila is not None)
+if fila:
+    check("registro tiene impuesto", fila["registro"].get("impuesto") == 5000,
+          f"={fila['registro'].get('impuesto')}")
+
+# 4c. Aumento fuera de contrato: vence 2026-10, proximo aumento (base 2026-01 + 6) = 2027-01
+r = client.get("/aumentos/")
+item2 = next((i for i in r.json() if i["contrato"]["id_contratos"] == id_cto2), None)
+if item2:
+    check("aumento fuera de contrato", item2["proximo_aumento"]["aumento_fuera_de_contrato"] is True,
+          f"={item2['proximo_aumento'].get('aumento_fuera_de_contrato')}")
+else:
+    check("aumentos lista contrato normal", False)
 
 # 5. Dashboard mes actual -> genera registro; luego editar alquiler actual y verificar sync
 r = client.get("/dashboard/mes-actual")
@@ -85,6 +107,17 @@ check("no doble aumento en dashboard", reg_reabrir["registro"]["alquiler_calcula
 # 7. Servicios pendientes (este contrato no cobra agua/luz, no debe aparecer)
 r = client.get("/servicios/pendientes")
 check("servicios ok", r.status_code == 200)
+
+# 7b. Editar impuesto del contrato normal -> registro no pagado del mes se sincroniza
+r = client.put(f"/contratos/{id_cto2}", json={"impuesto_fijo": 7000})
+check("editar impuesto", r.status_code == 200)
+r = client.get("/dashboard/mes-actual")
+reg_imp = next((i for i in r.json() if i["contrato"]["id_contratos"] == id_cto2), None)
+if reg_imp:
+    check("sync impuesto", reg_imp["registro"]["impuesto"] == 7000,
+          f"={reg_imp['registro']['impuesto']}")
+else:
+    check("dashboard lista contrato normal", False)
 
 # 8. Aumentos: proximo aumento usa alquiler_base_actual (700000)
 r = client.get("/aumentos/")

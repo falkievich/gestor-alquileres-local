@@ -44,6 +44,7 @@ export interface Contrato {
   cobra_expensa: boolean
   cobra_agua: boolean
   cobra_luz: boolean
+  impuesto_fijo?: number
   tipo_aumento: 'MANUAL' | 'ICL'
   archivo_nombre?: string
 }
@@ -62,6 +63,7 @@ export interface ContratoCreate {
   cobra_expensa?: boolean
   cobra_agua?: boolean
   cobra_luz?: boolean
+  impuesto_fijo?: number
   tipo_aumento?: 'MANUAL' | 'ICL'
   fecha_ultimo_aumento?: string
 }
@@ -78,6 +80,7 @@ export interface RegistroMensual {
   nota_override?: string
   agua?: number
   luz?: number
+  impuesto?: number
   pagado: boolean
   total: number
   porcentaje_aumento_usado?: number
@@ -132,6 +135,7 @@ export interface AumentoItem {
     icl_calculado?: boolean
     icl_aplicable?: boolean
     fecha_vigencia?: string
+    aumento_fuera_de_contrato?: boolean
   }
   alerta?: string
 }

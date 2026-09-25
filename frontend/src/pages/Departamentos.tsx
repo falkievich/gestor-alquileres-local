@@ -3,7 +3,7 @@ import api from '../lib/api'
 import type { Departamento, DepartamentoCreate, HistorialItem, PagoItem } from '../lib/types'
 import { PISOS, MESES, formatMoneda, formatFecha } from '../lib/types'
 import { Plus, Pencil, Trash2, History, X, CreditCard, Building2, Filter } from 'lucide-react'
-import { Label, clasesCampo, ErrorCamposModal } from '../lib/ui'
+import { Label, clasesCampo, ErrorCamposModal, ModalShell, useToast } from '../lib/ui'
 
 function formatDepto(piso: string | undefined, codigo: string | undefined) {
   if (!piso || !codigo) return `${piso ?? ''} ${codigo ?? ''}`.trim()
@@ -13,6 +13,7 @@ function formatDepto(piso: string | undefined, codigo: string | undefined) {
 type Modal = 'crear' | 'editar' | 'historial' | 'pagos' | null
 
 export default function Departamentos() {
+  const toast = useToast()
   const [departamentos, setDepartamentos] = useState<Departamento[]>([])
   const [modal, setModal] = useState<Modal>(null)
   const [selected, setSelected] = useState<Departamento | null>(null)
@@ -89,8 +90,10 @@ export default function Departamentos() {
     try {
       if (modal === 'crear') {
         await api.post('/departamentos/', form)
+        toast('Se guardó el departamento correctamente')
       } else if (modal === 'editar' && selected) {
         await api.put(`/departamentos/${selected.id_departamentos}`, form)
+        toast('Se actualizaron los cambios correctamente')
       }
       cargar()
       setModal(null)
@@ -114,6 +117,7 @@ export default function Departamentos() {
   async function eliminar(dep: Departamento) {
     if (!confirm(`¿Eliminar ${dep.piso} ${dep.codigo}?`)) return
     await api.delete(`/departamentos/${dep.id_departamentos}`)
+    toast('Se eliminó el departamento correctamente')
     cargar()
   }
 
@@ -220,8 +224,8 @@ export default function Departamentos() {
 
       {/* Modal Crear/Editar */}
       {(modal === 'crear' || modal === 'editar') && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+        <ModalShell max="max-w-lg">
+          <div className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-lg">{modal === 'crear' ? 'Nuevo departamento' : 'Editar departamento'}</h3>
               <button onClick={() => setModal(null)}><X size={18} className="text-gray-500" /></button>
@@ -267,15 +271,15 @@ export default function Departamentos() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalShell>
       )}
 
       <ErrorCamposModal errores={popupErrores} onCerrar={() => setPopupErrores([])} />
 
       {/* Modal Historial */}
       {modal === 'historial' && selected && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto">
+        <ModalShell max="max-w-xl">
+          <div className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-lg">Historial — {formatDepto(selected.piso, selected.codigo)}</h3>
               <button onClick={() => setModal(null)}><X size={18} className="text-gray-500" /></button>
@@ -309,13 +313,13 @@ export default function Departamentos() {
               </table>
             )}
           </div>
-        </div>
+        </ModalShell>
       )}
 
       {/* Modal Pagos */}
       {modal === 'pagos' && selected && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+        <ModalShell max="max-w-3xl">
+          <div className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-lg">Pagos — {formatDepto(selected.piso, selected.codigo)}</h3>
               <button onClick={() => setModal(null)}><X size={18} className="text-gray-500" /></button>
@@ -373,7 +377,7 @@ export default function Departamentos() {
               </table>
             )}
           </div>
-        </div>
+        </ModalShell>
       )}
     </div>
   )

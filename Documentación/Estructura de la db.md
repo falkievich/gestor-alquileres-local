@@ -57,6 +57,7 @@ CREATE TABLE contratos (
     cobra_expensa               TINYINT(1)      NOT NULL DEFAULT 0,
     cobra_agua                  TINYINT(1)      NOT NULL DEFAULT 0,
     cobra_luz                   TINYINT(1)      NOT NULL DEFAULT 0,
+    impuesto_fijo               INT                 NULL, -- Monto fijo mensual opcional; NO participa de los aumentos
     archivo_blob                LONGBLOB            NULL,
     archivo_nombre              VARCHAR(255)        NULL,
 
@@ -94,6 +95,7 @@ CREATE TABLE registros_mensuales (
     nota_override           TEXT        NULL,
     agua                    INT         NULL,
     luz                     INT         NULL,
+    impuesto                INT         NULL, -- Copia del impuesto_fijo del contrato al crear el registro (fijo, sin aumentos)
     pagado                  TINYINT(1)  NOT NULL DEFAULT 0,
     total                   INT         NOT NULL,
     porcentaje_aumento_usado DOUBLE NULL, -- Se completa únicamente cuando realmente ocurre un aumento. Si ese mes no hubo aumento: NULL

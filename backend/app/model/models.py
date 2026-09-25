@@ -83,6 +83,7 @@ class Contrato(SQLModel, table=True):
     cobra_expensa: bool = Field(default=False)
     cobra_agua: bool = Field(default=False)
     cobra_luz: bool = Field(default=False)
+    impuesto_fijo: Optional[int] = Field(default=None, nullable=True)
     tipo_aumento: str = Field(default='MANUAL', max_length=20)
     archivo_blob: Optional[bytes] = Field(default=None)
     archivo_nombre: Optional[str] = Field(default=None, max_length=255)
@@ -102,6 +103,7 @@ class ContratoCreate(SQLModel):
     cobra_expensa: bool = False
     cobra_agua: bool = False
     cobra_luz: bool = False
+    impuesto_fijo: Optional[int] = None
     tipo_aumento: str = 'MANUAL'
     fecha_ultimo_aumento: Optional[date] = None
 
@@ -118,6 +120,7 @@ class ContratoUpdate(SQLModel):
     cobra_expensa: Optional[bool] = None
     cobra_agua: Optional[bool] = None
     cobra_luz: Optional[bool] = None
+    impuesto_fijo: Optional[int] = None
     tipo_aumento: Optional[str] = None
     fecha_ultimo_aumento: Optional[date] = None
 
@@ -142,6 +145,7 @@ class ContratoRead(SQLModel):
     cobra_expensa: bool
     cobra_agua: bool
     cobra_luz: bool
+    impuesto_fijo: Optional[int] = None
     tipo_aumento: str = 'MANUAL'
     archivo_nombre: Optional[str] = None
 
@@ -161,6 +165,7 @@ class RegistroMensual(SQLModel, table=True):
     nota_override: Optional[str] = None
     agua: Optional[int] = None
     luz: Optional[int] = None
+    impuesto: Optional[int] = Field(default=None, nullable=True)
     pagado: bool = Field(default=False)
     total: int
     porcentaje_aumento_usado: Optional[float] = Field(
@@ -175,6 +180,7 @@ class RegistroMensualCreate(SQLModel):
     expensa_calculada: Optional[int] = None
     agua: Optional[int] = None
     luz: Optional[int] = None
+    impuesto: Optional[int] = None
     total: int
     porcentaje_aumento_usado: Optional[float] = None
 
@@ -185,6 +191,7 @@ class RegistroMensualUpdate(SQLModel):
     nota_override: Optional[str] = None
     agua: Optional[int] = None
     luz: Optional[int] = None
+    impuesto: Optional[int] = None
     pagado: Optional[bool] = None
     total: Optional[int] = None
     porcentaje_aumento_usado: Optional[float] = None
@@ -202,6 +209,7 @@ class RegistroMensualRead(SQLModel):
     nota_override: Optional[str] = None
     agua: Optional[int] = None
     luz: Optional[int] = None
+    impuesto: Optional[int] = None
     pagado: bool = False
     total: int
     porcentaje_aumento_usado: Optional[float] = None
