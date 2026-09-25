@@ -90,8 +90,8 @@ export default function Servicios() {
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Departamento</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Inquilino</th>
-                <th className="text-center px-4 py-3 font-semibold text-gray-600">Agua ($)</th>
-                <th className="text-center px-4 py-3 font-semibold text-gray-600">Luz ($)</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Agua ($)</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Luz ($)</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Estado</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Acción</th>
               </tr>
@@ -114,11 +114,11 @@ export default function Servicios() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-gray-700">{item.inquilino?.nombre_apellido}</td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3 text-left">
                       {item.contrato.cobra_agua ? (
                         <input
                           type="number"
-                          className="w-28 border rounded-lg px-3 py-1.5 text-sm text-center"
+                          className="w-28 border rounded-lg px-3 py-1.5 text-sm text-left"
                           value={v.agua}
                           onChange={e => setValores(prev => ({
                             ...prev,
@@ -130,11 +130,11 @@ export default function Servicios() {
                         <span className="text-gray-400">No cobra</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3 text-left">
                       {item.contrato.cobra_luz ? (
                         <input
                           type="number"
-                          className="w-28 border rounded-lg px-3 py-1.5 text-sm text-center"
+                          className="w-28 border rounded-lg px-3 py-1.5 text-sm text-left"
                           value={v.luz}
                           onChange={e => setValores(prev => ({
                             ...prev,

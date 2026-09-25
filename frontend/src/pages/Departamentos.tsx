@@ -147,8 +147,8 @@ export default function Departamentos() {
         <div className="grid grid-cols-[2fr_2fr_1fr_auto] gap-4 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wide">
           <span>Departamento</span>
           <span>Dirección</span>
-          <span>Estado</span>
-          <span className="w-32 text-right">Acciones</span>
+          <span className="text-center">Estado</span>
+          <span className="w-32 text-center">Acciones</span>
         </div>
 
         {departamentos.length === 0 ? (
@@ -178,7 +178,7 @@ export default function Departamentos() {
                 </div>
 
                 {/* Estado */}
-                <div>
+                <div className="text-center">
                   <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full ${dep.esta_ocupado ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>
                     <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${dep.esta_ocupado ? 'bg-red-500' : 'bg-green-500'}`} />
                     {dep.esta_ocupado ? 'Ocupado' : 'Libre'}
@@ -186,7 +186,7 @@ export default function Departamentos() {
                 </div>
 
                 {/* Acciones */}
-                <div className="flex items-center gap-1 w-32 justify-end">
+                <div className="flex items-center gap-1 w-32 justify-center">
                   <button
                     onClick={() => abrirHistorial(dep)}
                     className="flex items-center gap-1 px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition"
@@ -291,18 +291,18 @@ export default function Departamentos() {
                 <thead>
                   <tr className="bg-gray-50 text-left">
                     <th className="px-3 py-2">Inquilino</th>
-                    <th className="px-3 py-2">Desde</th>
-                    <th className="px-3 py-2">Hasta</th>
-                    <th className="px-3 py-2">Estado</th>
+                    <th className="px-3 py-2 text-center">Desde</th>
+                    <th className="px-3 py-2 text-center">Hasta</th>
+                    <th className="px-3 py-2 text-center">Estado</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {historial.map(h => (
                     <tr key={h.contrato.id_contratos}>
                       <td className="px-3 py-2">{h.inquilino?.nombre_apellido}</td>
-                      <td className="px-3 py-2">{formatFecha(h.contrato.fecha_inicio)}</td>
-                      <td className="px-3 py-2">{formatFecha(h.contrato.fecha_fin)}</td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-2 text-center">{formatFecha(h.contrato.fecha_inicio)}</td>
+                      <td className="px-3 py-2 text-center">{formatFecha(h.contrato.fecha_fin)}</td>
+                      <td className="px-3 py-2 text-center">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${h.contrato.estado === 'activo' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                           {h.contrato.estado}
                         </span>
@@ -354,18 +354,18 @@ export default function Departamentos() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 text-left">
-                    <th className="px-3 py-2">Mes</th>
+                    <th className="px-3 py-2 text-center">Mes</th>
                     <th className="px-3 py-2">Inquilino</th>
-                    <th className="px-3 py-2 text-right">Total</th>
+                    <th className="px-3 py-2 text-center">Total</th>
                     <th className="px-3 py-2 text-center">Estado</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {pagos.map(p => (
                     <tr key={p.registro.id_registros_mensuales}>
-                      <td className="px-3 py-2">{MESES[p.registro.mes - 1]} {p.registro.anio}</td>
+                      <td className="px-3 py-2 text-center">{MESES[p.registro.mes - 1]} {p.registro.anio}</td>
                       <td className="px-3 py-2">{p.inquilino?.nombre_apellido}</td>
-                      <td className="px-3 py-2 text-right font-mono">{formatMoneda(p.registro.total)}</td>
+                      <td className="px-3 py-2 text-center font-mono whitespace-nowrap">{formatMoneda(p.registro.total)}</td>
                       <td className="px-3 py-2 text-center">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${p.registro.pagado ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                           {p.registro.pagado ? 'Pagado' : 'No pagado'}

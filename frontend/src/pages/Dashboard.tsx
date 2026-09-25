@@ -329,16 +329,16 @@ export default function Dashboard() {
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <th className="text-left px-4 py-3 font-semibold text-gray-600">Mes / Año</th>
+                      <th className="text-center px-4 py-3 font-semibold text-gray-600">Mes / Año</th>
                       <th className="text-left px-4 py-3 font-semibold text-gray-600">Depto</th>
                       <th className="text-left px-4 py-3 font-semibold text-gray-600">Inquilino</th>
-                      <th className="text-right px-4 py-3 font-semibold text-gray-600">Alquiler</th>
-                      <th className="text-right px-4 py-3 font-semibold text-gray-600">Expensa</th>
-                      <th className="text-right px-4 py-3 font-semibold text-gray-600">Agua</th>
-                      <th className="text-right px-4 py-3 font-semibold text-gray-600">Luz</th>
-                      <th className="text-right px-4 py-3 font-semibold text-gray-600">Impuesto</th>
+                      <th className="text-left px-4 py-3 font-semibold text-gray-600">Alquiler</th>
+                      <th className="text-left px-4 py-3 font-semibold text-gray-600">Expensa</th>
+                      <th className="text-left px-4 py-3 font-semibold text-gray-600">Agua</th>
+                      <th className="text-left px-4 py-3 font-semibold text-gray-600">Luz</th>
+                      <th className="text-left px-4 py-3 font-semibold text-gray-600">Impuesto</th>
                       <th className="text-center px-4 py-3 font-semibold text-gray-600">Total</th>
-                      <th className="text-center px-4 py-3 font-semibold text-gray-600 print:hidden"></th>
+                      <th className="text-center px-4 py-3 font-semibold text-gray-600 print:hidden">Acción</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -348,7 +348,7 @@ export default function Dashboard() {
                       const exp = reg.expensa_override ?? reg.expensa_calculada
                       return (
                         <tr key={reg.id_registros_mensuales} className="hover:bg-gray-50">
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-3 text-center">
                             <span className="font-semibold text-gray-800">{MESES[h.mes - 1]}</span>
                             <span className="text-gray-500 ml-1">{h.anio}</span>
                           </td>
@@ -361,17 +361,17 @@ export default function Dashboard() {
                             )}
                           </td>
                           <td className="px-4 py-3 text-gray-700">{h.inquilino?.nombre_apellido}</td>
-                          <td className="px-4 py-3 text-right font-mono">{formatMoneda(alq)}</td>
-                          <td className="px-4 py-3 text-right font-mono">
+                    <td className="px-4 py-3 text-left font-mono whitespace-nowrap">{formatMoneda(alq)}</td>
+                          <td className="px-4 py-3 text-left font-mono whitespace-nowrap">
                             {h.contrato.cobra_expensa ? formatMoneda(exp) : <span className="text-gray-400">-</span>}
                           </td>
-                          <td className="px-4 py-3 text-right font-mono">
+                          <td className="px-4 py-3 text-left font-mono whitespace-nowrap">
                             {h.contrato.cobra_agua ? (reg.agua != null ? formatMoneda(reg.agua) : <span className="text-gray-400">-</span>) : <span className="text-gray-400">-</span>}
                           </td>
-                          <td className="px-4 py-3 text-right font-mono">
+                          <td className="px-4 py-3 text-left font-mono whitespace-nowrap">
                             {h.contrato.cobra_luz ? (reg.luz != null ? formatMoneda(reg.luz) : <span className="text-gray-400">-</span>) : <span className="text-gray-400">-</span>}
                           </td>
-                          <td className="px-4 py-3 text-right font-mono">
+                          <td className="px-4 py-3 text-left font-mono whitespace-nowrap">
                             {reg.impuesto != null ? formatMoneda(reg.impuesto) : <span className="text-gray-400">-</span>}
                           </td>
                           <td className="px-4 py-3 text-center font-bold font-mono text-green-700">{formatMoneda(h.total)}</td>
@@ -421,11 +421,11 @@ export default function Dashboard() {
                 )}
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Depto</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Inquilino</th>
-                <th className="text-right px-4 py-3 font-semibold text-gray-600">Alquiler</th>
-                <th className="text-right px-4 py-3 font-semibold text-gray-600">Expensa</th>
-                <th className="text-center px-4 py-3 font-semibold text-gray-600">Agua</th>
-                <th className="text-center px-4 py-3 font-semibold text-gray-600">Luz</th>
-                <th className="text-center px-4 py-3 font-semibold text-gray-600">Impuesto</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Alquiler</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Expensa</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Agua</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Luz</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Impuesto</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Total</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600 col-servicios-impresion">Servicios</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Pago</th>
@@ -477,15 +477,15 @@ export default function Dashboard() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-gray-700">{item.inquilino?.nombre_apellido}</td>
-                    <td className="px-4 py-3 text-right font-mono">{formatMoneda(alq)}</td>
-                    <td className="px-4 py-3 text-right font-mono">{item.contrato.cobra_expensa ? formatMoneda(exp) : <span className="text-gray-400">-</span>}</td>
-                    <td className="px-4 py-3 text-center font-mono">
+                    <td className="px-4 py-3 text-left font-mono whitespace-nowrap">{formatMoneda(alq)}</td>
+                    <td className="px-4 py-3 text-left font-mono whitespace-nowrap">{item.contrato.cobra_expensa ? formatMoneda(exp) : <span className="text-gray-400">-</span>}</td>
+                    <td className="px-4 py-3 text-left font-mono whitespace-nowrap">
                       {item.contrato.cobra_agua ? (reg.agua != null ? formatMoneda(reg.agua) : <span className="text-orange-500">Pend.</span>) : <span className="text-gray-400">-</span>}
                     </td>
-                    <td className="px-4 py-3 text-center font-mono">
+                    <td className="px-4 py-3 text-left font-mono whitespace-nowrap">
                       {item.contrato.cobra_luz ? (reg.luz != null ? formatMoneda(reg.luz) : <span className="text-orange-500">Pend.</span>) : <span className="text-gray-400">-</span>}
                     </td>
-                    <td className="px-4 py-3 text-center font-mono">
+                    <td className="px-4 py-3 text-left font-mono whitespace-nowrap">
                       {reg.impuesto != null ? formatMoneda(reg.impuesto) : <span className="text-gray-400">-</span>}
                     </td>
                     <td className="px-4 py-3 text-center font-bold font-mono">{formatMoneda(item.total)}</td>

@@ -321,18 +321,18 @@ export default function Inquilinos() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 text-left">
-                    <th className="px-3 py-2">Mes</th>
+                    <th className="px-3 py-2 text-center">Mes</th>
                     <th className="px-3 py-2">Departamento</th>
-                    <th className="px-3 py-2 text-right">Total</th>
+                    <th className="px-3 py-2 text-center">Total</th>
                     <th className="px-3 py-2 text-center">Estado</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {pagos.map(p => (
                     <tr key={p.registro.id_registros_mensuales}>
-                      <td className="px-3 py-2">{MESES[p.registro.mes - 1]} {p.registro.anio}</td>
+                      <td className="px-3 py-2 text-center">{MESES[p.registro.mes - 1]} {p.registro.anio}</td>
                       <td className="px-3 py-2">{p.departamento?.piso} {p.departamento?.codigo}</td>
-                      <td className="px-3 py-2 text-right font-mono">{formatMoneda(p.registro.total)}</td>
+                      <td className="px-3 py-2 text-center font-mono whitespace-nowrap">{formatMoneda(p.registro.total)}</td>
                       <td className="px-3 py-2 text-center">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${p.registro.pagado ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                           {p.registro.pagado ? 'Pagado' : 'No pagado'}

@@ -303,9 +303,9 @@ export default function Contratos() {
           )}
         </td>
         <td className="px-4 py-3 text-left text-gray-700">{inqNombre(c.id_inquilinos)}</td>
-        <td className="px-4 py-3 text-left text-gray-600 text-sm">{formatFecha(c.fecha_inicio)}</td>
-        <td className="px-4 py-3 text-left text-gray-600 text-sm">{formatFecha(c.fecha_fin)}</td>
-        <td className="px-4 py-3 text-left font-mono">{formatMoneda(c.alquiler_base_actual)}</td>
+        <td className="px-4 py-3 text-center text-gray-600 text-sm">{formatFecha(c.fecha_inicio)}</td>
+        <td className="px-4 py-3 text-center text-gray-600 text-sm">{formatFecha(c.fecha_fin)}</td>
+        <td className="px-4 py-3 text-left font-mono whitespace-nowrap">{formatMoneda(c.alquiler_base_actual)}</td>
         <td className="px-4 py-3 text-center"><CobrosBadges c={c} /></td>
         <td className="px-4 py-3 text-center">{estadoBadge(c)}</td>
         <td className="px-4 py-3 text-center">
@@ -397,8 +397,8 @@ export default function Contratos() {
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Depto</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Inquilino</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Inicio</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Vence</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Inicio</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Vence</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Alquiler</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Incluye</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Estado</th>
@@ -420,8 +420,8 @@ export default function Contratos() {
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Depto</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Inquilino</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Inicio</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Vencimiento</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Inicio</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Vencimiento</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Alquiler</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Incluye</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Estado</th>
