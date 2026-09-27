@@ -8,6 +8,7 @@ from app.service.mes_service import (
     calcular_estado_servicios,
     calcular_total,
     preparar_registro_mes,
+    contrato_vigente_para_mes,
 )
 from app.model.models import Contrato, ContratoRead, RegistroMensual
 from typing import Optional
@@ -28,6 +29,10 @@ def listar_pendientes(session: Session = Depends(get_session)):
 
     for contrato in contratos:
         if not contrato.cobra_agua and not contrato.cobra_luz:
+            continue
+        # No preparar/mostrar meses posteriores al vencimiento del contrato
+        # (el mes de fecha_fin sigue siendo válido).
+        if not contrato_vigente_para_mes(contrato, anio, mes):
             continue
         # Genera el registro del mes si aún no existe (igual que el Dashboard),
         # así los servicios aparecen apenas se crea el contrato.
@@ -67,6 +72,12 @@ def guardar_servicios(
     contrato = session.get(Contrato, registro.id_contratos)
     if not contrato:
         raise HTTPException(status_code=404, detail="Contrato no encontrado")
+    # No se permiten servicios sobre meses posteriores al vencimiento.
+    if not contrato_vigente_para_mes(contrato, registro.anio, registro.mes):
+        raise HTTPException(
+            status_code=409,
+            detail="No se pueden cargar servicios posteriores a la fecha de "
+                   f"vencimiento ({contrato.fecha_fin.isoformat()}) del contrato")
 
     from app.crud.registros import RegistroMensualUpdate
     if agua is not None:

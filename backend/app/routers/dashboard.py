@@ -15,6 +15,7 @@ from app.service.mes_service import (
     calcular_alquiler,
     calcular_expensa,
     calcular_total,
+    contrato_vigente_para_mes,
 )
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -30,6 +31,11 @@ def get_dashboard(session: Session = Depends(get_session)):
     for contrato in contratos:
         # No mostrar contratos cuya fecha de inicio aún no llegó
         if contrato.fecha_inicio > hoy:
+            continue
+
+        # No preparar/mostrar meses posteriores al vencimiento del contrato
+        # (el mes de fecha_fin sigue siendo válido).
+        if not contrato_vigente_para_mes(contrato, anio, mes):
             continue
 
         # Aplica el aumento si corresponde y crea (o reutiliza) el registro
@@ -128,6 +134,12 @@ def marcar_pagado(id_registro: int, session: Session = Depends(get_session)):
     contrato = session.get(Contrato, registro.id_contratos)
     if not contrato:
         raise HTTPException(status_code=404, detail="Contrato no encontrado")
+    # Un mes posterior al vencimiento del contrato no se puede cobrar.
+    if not contrato_vigente_para_mes(contrato, registro.anio, registro.mes):
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede cobrar un mes posterior a la fecha de "
+                   f"vencimiento ({contrato.fecha_fin.isoformat()}) del contrato")
     estado_servicios = calcular_estado_servicios(contrato, registro)
     if estado_servicios != "OK":
         raise HTTPException(
@@ -159,6 +171,12 @@ def override_registro(
     contrato = session.get(Contrato, registro.id_contratos)
     if not contrato:
         raise HTTPException(status_code=404, detail="Contrato no encontrado")
+    # No se permiten ajustes sobre meses posteriores al vencimiento.
+    if not contrato_vigente_para_mes(contrato, registro.anio, registro.mes):
+        raise HTTPException(
+            status_code=409,
+            detail="No se pueden ajustar meses posteriores a la fecha de "
+                   f"vencimiento ({contrato.fecha_fin.isoformat()}) del contrato")
 
     from app.crud.registros import RegistroMensualUpdate
     update_data = RegistroMensualUpdate(

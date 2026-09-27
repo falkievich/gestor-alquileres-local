@@ -445,3 +445,38 @@ implementación quedaron superadas varias limitaciones de este análisis:
   modificación y "Restaurar propuesta"; el historial muestra solo CONSOLIDADO.
 - Al modificar, lquiler_base_actual queda en el monto aplicado: la siguiente
   proyección parte de él (no del propuesto ni del anterior).
+
+
+---
+
+## ACTUALIZACIÓN — Punto 3 (auditoría, sin cambios funcionales)
+
+Verificado y testeado (smoke_test_iter4_auditoria.py): SIN_AUMENTO nunca aplica ni
+genera historial; MANUAL+0% legacy sigue bloqueado; contratos cortos respetan
+fecha_fin (aumento permitido en el mes de vencimiento, bloqueado después, tanto
+MANUAL como ICL; un corto de 3 meses con base legacy nunca recibe aumento porque
+correspondería en el mes posterior a fecha_fin).
+
+Problema documentado (sin corregir): un contrato VENCIDO pero estado='activo' sigue
+generando registros/cobros en Dashboard y Servicios (get_contratos_activos solo
+filtra por estado, no por fecha_fin). Se recomienda corregir antes del Punto 4:
+bloquear la preparación de meses posteriores a fecha_fin en
+preparar_registro_mes/get_dashboard (y avisar en UI), o exigir cierre manual con
+guarda en backend.
+
+
+---
+
+## ACTUALIZACIÓN — Guarda de vencimiento (fecha_fin) implementada
+
+- Nueva contrato_vigente_para_mes(contrato, anio, mes) en mes_service: el mes de
+  fecha_fin sigue siendo válido; meses posteriores no.
+- preparar_registro_mes rechaza con 409 cualquier mes posterior a fecha_fin
+  (guarda defensiva en el punto único de generación de registros).
+- Dashboard y Servicios filtran los vencidos activos una vez pasado el mes de
+  fecha_fin (desaparecen del listado; no se cierran automáticamente).
+- marcar_pagado, override_registro y guardar_servicios validan por id que el
+  registro no sea posterior al vencimiento (409).
+- _sincronizar_registros_mensuales no escribe en meses posteriores a fecha_fin.
+- El cierre manual (estado = finalizado) se mantiene como acción formal.
+- Test: smoke_test_iter5_vencidos.py (TODO OK); iter4 actualizado al nuevo comportamiento.

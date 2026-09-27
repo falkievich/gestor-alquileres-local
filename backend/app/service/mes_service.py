@@ -245,7 +245,17 @@ def preparar_registro_mes(session: Session, contrato: Contrato, anio: int, mes: 
     Usada por el Dashboard y por la sección Servicios para que ambos
     generen el registro del mes de la misma forma.
     Retorna (registro, porcentaje_aplicado).
+
+    Protección: no prepara meses posteriores al mes de fecha_fin del contrato
+    (el mes de vencimiento sigue siendo válido). Levanta HTTPException 409.
     """
+    if not contrato_vigente_para_mes(contrato, anio, mes):
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=409,
+            detail="No se pueden generar meses posteriores a la fecha de "
+                   f"vencimiento ({contrato.fecha_fin.isoformat()}) del contrato",
+        )
     porcentaje_aplicado = aplicar_aumento_si_corresponde(
         session, contrato, anio, mes)
     session.refresh(contrato)
@@ -262,6 +272,19 @@ def preparar_registro_mes(session: Session, contrato: Contrato, anio: int, mes: 
         registro.porcentaje_aumento_usado = porcentaje_aplicado
 
     return registro, porcentaje_aplicado
+
+
+def contrato_vigente_para_mes(contrato: Contrato, anio: int, mes: int) -> bool:
+    """
+    Indica si el contrato sigue vigente para el mes dado.
+
+    El mes de fecha_fin sigue siendo válido (se puede cobrar); cualquier
+    mes posterior ya no genera registros, servicios ni cobros. El cierre
+    manual del contrato (estado = 'finalizado') se mantiene como acción
+    formal e independiente de esta guarda.
+    """
+    fin = contrato.fecha_fin
+    return (anio, mes) <= (fin.year, fin.month)
 
 
 def calcular_estado_servicios(contrato: Contrato, registro: RegistroMensual) -> str:

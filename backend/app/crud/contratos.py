@@ -84,6 +84,9 @@ def _sincronizar_registros_mensuales(session: Session, contrato: Contrato) -> No
     for registro in registros:
         if (registro.anio, registro.mes) < (anio_actual, mes_actual):
             continue
+        # No escribir en meses posteriores al vencimiento del contrato.
+        if (registro.anio, registro.mes) > (contrato.fecha_fin.year, contrato.fecha_fin.month):
+            continue
         cambio = False
         if registro.alquiler_override is None and \
                 registro.alquiler_calculado != contrato.alquiler_base_actual:

@@ -655,7 +655,8 @@ function HistorialAumentos({
           <p className="text-xs text-gray-300 mt-1">Los aumentos se registran automaticamente cuando corresponden y se consolidan al cobrar el mes.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+          <div className="min-w-[900px]">
           <div className="grid grid-cols-[1fr_2fr_1.4fr_1fr_1fr_1fr_1fr] gap-3 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wide">
             <span className="text-center">Mes / Ano</span>
             <span>Departamento / Inquilino</span>
@@ -801,6 +802,7 @@ function HistorialAumentos({
                 </div>
               )
             })}
+          </div>
           </div>
         </div>
       )}
