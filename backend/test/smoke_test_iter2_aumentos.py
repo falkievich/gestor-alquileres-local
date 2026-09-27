@@ -149,12 +149,16 @@ check("C5 sin legacy %", reg5["registro"]["porcentaje_aumento_usado"] is None)
 
 # ── 7) Idempotencia: repetir dashboard no duplica ni reaplica ───────
 with Session(engine) as s:
-    total_h_antes = len(s.exec(select(HistorialAumento)).all())
+    ids_test = (id_c1, id_c2, id_c4)
+    total_h_antes = len([h for h in s.exec(select(HistorialAumento)).all()
+                         if h.id_contratos in ids_test])
 check("preparacion: 3 historiales (C1, C2, C4)", total_h_antes == 3, f"={total_h_antes}")
 for _ in range(3):
     client.get("/dashboard/mes-actual")
 with Session(engine) as s:
-    total_h_despues = len(s.exec(select(HistorialAumento)).all())
+    ids_test = (id_c1, id_c2, id_c4)
+    total_h_despues = len([h for h in s.exec(select(HistorialAumento)).all()
+                           if h.id_contratos in ids_test])
     c1 = s.get(Contrato, id_c1)
 check("idempotencia: no duplica historiales", total_h_despues == total_h_antes,
       f"antes={total_h_antes} despues={total_h_despues}")

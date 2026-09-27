@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 from typing import Optional
 from app.db import get_session
@@ -6,8 +6,11 @@ from app.crud import contratos as crud_contratos
 from app.crud import historial_aumentos as crud_historial
 from app.model.models import (
     Contrato, ContratoRead, Departamento, Inquilino, HistorialAumentoRead,
+    HistorialAumentoUpdate,
 )
-from app.service.mes_service import calcular_proximo_aumento, get_mes_actual
+from app.service.mes_service import (
+    calcular_proximo_aumento, get_mes_actual, modificar_aumento_pendiente,
+)
 from datetime import date
 
 router = APIRouter(prefix="/aumentos", tags=["aumentos"])
@@ -50,18 +53,24 @@ def historial_aumentos(
     id_inquilinos: Optional[int] = None,
     anio: Optional[int] = None,
     mes: Optional[int] = None,
+    estado: Optional[str] = None,
     session: Session = Depends(get_session),
 ):
     """
     Historial de aumentos leído directamente de la tabla `historial_aumentos`
     (fuente de verdad). Cada fila es un evento de aumento real con su estado
     (PENDIENTE / CONSOLIDADO), montos propuestos/aplicados y datos ICL.
+
+    Filtro opcional `estado` (PENDIENTE / CONSOLIDADO) para separar los
+    aumentos pendientes de consolidar del histórico definitivo.
     """
     historiales = crud_historial.listar(session)
     hoy = date.today()
     resultado = []
 
     for h in historiales:
+        if estado and h.estado != estado:
+            continue
         if anio and h.anio != anio:
             continue
         if mes and h.mes != mes:
@@ -89,3 +98,30 @@ def historial_aumentos(
         })
 
     return resultado
+
+
+@router.patch("/historial/{id_historial_aumentos}")
+def modificar_aumento(
+    id_historial_aumentos: int,
+    data: HistorialAumentoUpdate,
+    session: Session = Depends(get_session),
+):
+    """
+    Modifica los montos aplicados de un aumento PENDIENTE.
+
+    Recibe solo los montos editables (alquiler_aplicado / expensa_aplicada);
+    los porcentajes aplicados los recalcula el backend. Sincroniza
+    historial_aumentos + contrato + registro mensual del período en una
+    única transacción, preservando los overrides existentes.
+
+    Errores:
+      - 404: aumento o contrato inexistente.
+      - 409: aumento CONSOLIDADO (inmutable) o registro mensual faltante.
+      - 400: monto inferior al anterior, sin montos, o expensa inexistente.
+    """
+    registro = modificar_aumento_pendiente(session, id_historial_aumentos, data)
+    historial = crud_historial.get_by_id(session, id_historial_aumentos)
+    return {
+        "historial": HistorialAumentoRead.model_validate(historial),
+        "registro": registro,
+    }

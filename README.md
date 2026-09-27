@@ -249,3 +249,24 @@ Todos los datos se guardan en la carpeta `base_de_datos/alquileres.sqlite`.
   archivos se guardan en la carpeta `backups/` con nombre `alquileres_YYYY-MM-DD_HH-mm.sqlite`.
 
 ---
+
+
+---
+
+## Modificación de aumentos pendientes (Aumentos)
+
+Cuando un aumento ya fue generado y su mes todavía no fue cobrado, queda **PENDIENTE** y
+aparece en el bloque "Aumentos pendientes de consolidar" (pestaña Próximos aumentos),
+donde se puede modificar con el botón "Modificar aumento".
+
+- Se modifican los **montos a aplicar** (Alquiler y/o Expensa, independiente); el
+  **porcentaje efectivo se calcula automáticamente** respecto del monto anterior.
+- Regla: el nuevo monto no puede ser inferior al monto anterior (puede ser menor, igual
+  o mayor que la propuesta del sistema).
+- "Restaurar propuesta" vuelve los montos a la propuesta original.
+- Se puede modificar varias veces mientras esté PENDIENTE; la propuesta original queda
+  congelada para auditoría.
+- Al cobrar el mes queda **CONSOLIDADO** e inmutable (histórico).
+- La pestaña "Historial de aumentos" muestra solo los CONSOLIDADOS.
+
+Ver detalle en Documentación/Requerimientos.md (sección Punto 2).

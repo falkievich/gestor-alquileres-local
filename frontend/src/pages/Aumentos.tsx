@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import api from '../lib/api'
 import type { AumentoItem, HistorialAumentoItem, Inquilino } from '../lib/types'
 import { MESES, formatMoneda, formatFecha } from '../lib/types'
+import { ModalShell, useToast, clasesCampo } from '../lib/ui'
 import {
   TrendingUp,
   AlertTriangle,
@@ -10,6 +11,8 @@ import {
   CheckCircle2,
   History,
   Filter,
+  Pencil,
+  RotateCcw,
 } from 'lucide-react'
 
 function formatDepto(piso: string | undefined, codigo: string | undefined) {
@@ -52,6 +55,309 @@ function EstadoAumentoBadge({ estado }: { estado: string }) {
     }`}>
       {estado}
     </span>
+  )
+}
+
+/* ──────────────────────────────────────────────
+   Aumentos pendientes de consolidar (Punto 2)
+   ────────────────────────────────────────────── */
+
+function calcularPorcentajeAplicado(anterior: number, aplicado: number) {
+  if (!anterior) return 0
+  return ((aplicado - anterior) / anterior) * 100
+}
+
+function PendientesConsolidar({
+  items,
+  onModificar,
+}: {
+  items: HistorialAumentoItem[]
+  onModificar: (item: HistorialAumentoItem) => void
+}) {
+  if (items.length === 0) return null
+
+  return (
+    <div className="mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <Clock size={16} className="text-yellow-600" />
+        <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
+          Aumentos pendientes de consolidar
+        </h3>
+        <span className="text-xs text-gray-400">
+          generados, todavía no cobrados — se pueden modificar
+        </span>
+      </div>
+      <div className="space-y-3">
+        {items.map(item => {
+          const h = item.historial
+          const conExpensa = h.expensa_anterior != null
+          return (
+            <div
+              key={h.id_historial_aumentos}
+              className="rounded-xl shadow-sm overflow-hidden border border-yellow-300 bg-yellow-50/50"
+            >
+              <div className="px-5 py-4">
+                <div className="flex items-start justify-between gap-4 mb-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-gray-800">
+                        {formatDepto(item.departamento?.piso, item.departamento?.codigo)}
+                      </span>
+                      <TipoBadge tipo={h.tipo_aumento} />
+                      <EstadoAumentoBadge estado="PENDIENTE" />
+                    </div>
+                    <div className="text-sm text-gray-500 mt-0.5">
+                      {item.inquilino?.nombre_apellido}
+                      {item.departamento?.direccion && (
+                        <span className="text-gray-400"> · {item.departamento.direccion}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="flex items-center gap-1.5 justify-end text-sm font-medium text-gray-700">
+                      <TrendingUp size={14} className="text-yellow-600" />
+                      {MESES[h.mes - 1]} {h.anio}
+                    </div>
+                    <div className="text-xs text-yellow-700 mt-1 flex items-center gap-1 justify-end">
+                      <Clock size={11} /> Pendiente de consolidar
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="bg-white rounded-lg px-3 py-2.5 border border-gray-100">
+                    <p className="text-xs text-gray-400 mb-0.5">Alquiler anterior</p>
+                    <p className="text-sm font-mono font-semibold text-gray-800">
+                      {formatMoneda(h.alquiler_anterior)}
+                    </p>
+                  </div>
+                  <div className="bg-white rounded-lg px-3 py-2.5 border border-gray-100">
+                    <p className="text-xs text-gray-400 mb-0.5">Propuesta del sistema</p>
+                    <p className="text-sm font-mono text-gray-600">
+                      {formatMoneda(h.alquiler_propuesto)} ({h.porcentaje_alquiler_propuesto.toFixed(2)}%)
+                    </p>
+                  </div>
+                  <div className="bg-white rounded-lg px-3 py-2.5 border border-gray-100">
+                    <p className="text-xs text-gray-400 mb-0.5">Monto a aplicar</p>
+                    <p className={`text-sm font-mono font-semibold ${h.alquiler_aplicado !== h.alquiler_propuesto ? 'text-amber-700' : 'text-blue-700'}`}>
+                      {formatMoneda(h.alquiler_aplicado)}
+                    </p>
+                  </div>
+                  <div className="bg-white rounded-lg px-3 py-2.5 border border-gray-100">
+                    <p className="text-xs text-gray-400 mb-0.5">% aplicado</p>
+                    <p className="text-sm font-semibold text-gray-700">
+                      {h.porcentaje_alquiler_aplicado.toFixed(2)}%
+                    </p>
+                  </div>
+
+                  {conExpensa && (
+                    <>
+                      <div className="bg-white rounded-lg px-3 py-2.5 border border-gray-100">
+                        <p className="text-xs text-gray-400 mb-0.5">Expensa anterior</p>
+                        <p className="text-sm font-mono font-semibold text-gray-800">
+                          {formatMoneda(h.expensa_anterior)}
+                        </p>
+                      </div>
+                      <div className="bg-white rounded-lg px-3 py-2.5 border border-gray-100">
+                        <p className="text-xs text-gray-400 mb-0.5">Propuesta del sistema</p>
+                        <p className="text-sm font-mono text-gray-600">
+                          {formatMoneda(h.expensa_propuesta)} ({h.porcentaje_expensa_propuesto != null ? `${h.porcentaje_expensa_propuesto.toFixed(2)}%` : '-'})
+                        </p>
+                      </div>
+                      <div className="bg-white rounded-lg px-3 py-2.5 border border-gray-100">
+                        <p className="text-xs text-gray-400 mb-0.5">Monto a aplicar</p>
+                        <p className={`text-sm font-mono font-semibold ${h.expensa_aplicada !== h.expensa_propuesta ? 'text-amber-700' : 'text-blue-700'}`}>
+                          {formatMoneda(h.expensa_aplicada)}
+                        </p>
+                      </div>
+                      <div className="bg-white rounded-lg px-3 py-2.5 border border-gray-100">
+                        <p className="text-xs text-gray-400 mb-0.5">% aplicado</p>
+                        <p className="text-sm font-semibold text-gray-700">
+                          {h.porcentaje_expensa_aplicado != null ? `${h.porcentaje_expensa_aplicado.toFixed(2)}%` : '-'}
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="flex justify-end mt-3">
+                  <button
+                    onClick={() => onModificar(item)}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 transition"
+                  >
+                    <Pencil size={14} /> Modificar aumento
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+interface ModalModificarState {
+  item: HistorialAumentoItem
+  alquiler: string
+  expensa: string
+  errores: Record<string, string>
+}
+
+function ModalModificarAumento({
+  state,
+  setState,
+  onCerrar,
+  onGuardar,
+  guardando,
+}: {
+  state: ModalModificarState
+  setState: (s: ModalModificarState) => void
+  onCerrar: () => void
+  onGuardar: () => void
+  guardando: boolean
+}) {
+  const { item } = state
+  const h = item.historial
+  const conExpensa = h.expensa_anterior != null
+
+  const alquilerNum = Number(state.alquiler)
+  const expensaNum = conExpensa ? Number(state.expensa) : null
+  const pctAlquiler = Number.isFinite(alquilerNum) && alquilerNum > 0
+    ? calcularPorcentajeAplicado(h.alquiler_anterior, alquilerNum)
+    : null
+  const pctExpensa = conExpensa && expensaNum != null && Number.isFinite(expensaNum) && expensaNum > 0
+    ? calcularPorcentajeAplicado(h.expensa_anterior!, expensaNum)
+    : null
+
+  const errorAlquiler = state.errores['alquiler_aplicado']
+  const errorExpensa = state.errores['expensa_aplicada']
+
+  return (
+    <ModalShell max="max-w-2xl">
+      <div className="p-6">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h3 className="text-lg font-bold text-gray-800">
+              Modificar aumento de {item.inquilino?.nombre_apellido ?? 'inquilino'}
+            </h3>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {formatDepto(item.departamento?.piso, item.departamento?.codigo)}
+              {item.departamento?.direccion && <span className="text-gray-400"> · {item.departamento.direccion}</span>}
+              {' '}· {MESES[h.mes - 1]} {h.anio} · <TipoBadge tipo={h.tipo_aumento} />
+            </p>
+          </div>
+          <EstadoAumentoBadge estado="PENDIENTE" />
+        </div>
+
+        <p className="text-xs text-gray-500 mb-4">
+          Modificá directamente los montos a cobrar; el porcentaje efectivo se calcula
+          automáticamente. El nuevo monto no puede ser inferior al monto anterior.
+        </p>
+
+        {/* ALQUILER */}
+        <div className="rounded-lg border border-gray-200 p-4 mb-4">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Alquiler</p>
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            <div>
+              <p className="text-xs text-gray-400 mb-0.5">Alquiler anterior</p>
+              <p className="text-sm font-mono font-semibold text-gray-800">{formatMoneda(h.alquiler_anterior)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 mb-0.5">Propuesta del sistema</p>
+              <p className="text-sm font-mono text-gray-600">
+                {formatMoneda(h.alquiler_propuesto)} ({h.porcentaje_alquiler_propuesto.toFixed(2)}%)
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 mb-0.5">Porcentaje aplicado</p>
+              <p className={`text-sm font-semibold ${pctAlquiler != null ? 'text-blue-700' : 'text-gray-400'}`}>
+                {pctAlquiler != null ? `${pctAlquiler.toFixed(2)}%` : '-'}
+              </p>
+            </div>
+          </div>
+          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="mod-alquiler">
+            Monto a aplicar
+          </label>
+          <input
+            id="mod-alquiler"
+            type="number"
+            min={h.alquiler_anterior}
+            value={state.alquiler}
+            onChange={e => setState({ ...state, alquiler: e.target.value, errores: { ...state.errores, alquiler_aplicado: '' } })}
+            className={clasesCampo(state.errores, 'alquiler_aplicado')}
+          />
+          {errorAlquiler && <p className="text-xs text-red-600 mt-1">{errorAlquiler}</p>}
+        </div>
+
+        {/* EXPENSA */}
+        {conExpensa && (
+          <div className="rounded-lg border border-gray-200 p-4 mb-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Expensa</p>
+            <div className="grid grid-cols-3 gap-3 mb-3">
+              <div>
+                <p className="text-xs text-gray-400 mb-0.5">Expensa anterior</p>
+                <p className="text-sm font-mono font-semibold text-gray-800">{formatMoneda(h.expensa_anterior)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 mb-0.5">Propuesta del sistema</p>
+                <p className="text-sm font-mono text-gray-600">
+                  {formatMoneda(h.expensa_propuesta)} ({h.porcentaje_expensa_propuesto != null ? `${h.porcentaje_expensa_propuesto.toFixed(2)}%` : '-'})
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 mb-0.5">Porcentaje aplicado</p>
+                <p className={`text-sm font-semibold ${pctExpensa != null ? 'text-blue-700' : 'text-gray-400'}`}>
+                  {pctExpensa != null ? `${pctExpensa.toFixed(2)}%` : '-'}
+                </p>
+              </div>
+            </div>
+            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="mod-expensa">
+              Monto a aplicar
+            </label>
+            <input
+              id="mod-expensa"
+              type="number"
+              min={h.expensa_anterior ?? 0}
+              value={state.expensa}
+              onChange={e => setState({ ...state, expensa: e.target.value, errores: { ...state.errores, expensa_aplicada: '' } })}
+              className={clasesCampo(state.errores, 'expensa_aplicada')}
+            />
+            {errorExpensa && <p className="text-xs text-red-600 mt-1">{errorExpensa}</p>}
+          </div>
+        )}
+
+        <div className="flex items-center justify-between gap-3 mt-5">
+          <button
+            onClick={() => setState({
+              ...state,
+              alquiler: String(h.alquiler_propuesto),
+              expensa: conExpensa ? String(h.expensa_propuesta) : '',
+              errores: {},
+            })}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+            title="Vuelve los montos a aplicar a la propuesta original del sistema"
+          >
+            <RotateCcw size={14} /> Restaurar propuesta
+          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={onCerrar}
+              className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={onGuardar}
+              disabled={guardando}
+              className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-300 transition"
+            >
+              {guardando ? 'Guardando...' : 'Guardar'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </ModalShell>
   )
 }
 
@@ -132,7 +438,7 @@ function ProximosAumentos({ items }: { items: AumentoItem[] }) {
                     ) : iclCalculado ? (
                       <span className="flex items-center gap-1 justify-end text-sky-700"><CheckCircle2 size={11} /> ICL calculado</span>
                     ) : (
-                      <span className="flex items-center gap-1 justify-end text-green-600"><CheckCircle2 size={11} /> Aplicado</span>
+                      <span className="flex items-center gap-1 justify-end text-green-600"><CheckCircle2 size={11} /> Próximo aumento planificado</span>
                     )}
                   </div>
                 </div>
@@ -507,21 +813,32 @@ type Tab = 'proximos' | 'historial'
 export default function Aumentos() {
   const [tab, setTab] = useState<Tab>('proximos')
   const [items, setItems] = useState<AumentoItem[]>([])
+  const [pendientes, setPendientes] = useState<HistorialAumentoItem[]>([])
   const [historial, setHistorial] = useState<HistorialAumentoItem[]>([])
   const [inquilinos, setInquilinos] = useState<Inquilino[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingHistorial, setLoadingHistorial] = useState(false)
+  const [modalModificar, setModalModificar] = useState<ModalModificarState | null>(null)
+  const [guardando, setGuardando] = useState(false)
+  const toast = useToast()
 
   async function cargarProximos() {
     setLoading(true)
-    const res = await api.get('/aumentos/')
-    setItems(res.data)
-    setLoading(false)
+    try {
+      const [resProx, resPend] = await Promise.all([
+        api.get('/aumentos/'),
+        api.get('/aumentos/historial', { params: { estado: 'PENDIENTE' } }),
+      ])
+      setItems(resProx.data)
+      setPendientes(resPend.data)
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function cargarHistorial(idInq = '', anio = '', mes = '') {
     setLoadingHistorial(true)
-    const params: Record<string, string> = {}
+    const params: Record<string, string> = { estado: 'CONSOLIDADO' }
     if (idInq) params.id_inquilinos = idInq
     if (anio) params.anio = anio
     if (mes) params.mes = mes
@@ -544,6 +861,65 @@ export default function Aumentos() {
     setTab(t)
     if (t === 'historial' && historial.length === 0 && !loadingHistorial) {
       cargarHistorial()
+    }
+  }
+
+  function abrirModalModificar(item: HistorialAumentoItem) {
+    const h = item.historial
+    setModalModificar({
+      item,
+      alquiler: String(h.alquiler_aplicado),
+      expensa: h.expensa_aplicada != null ? String(h.expensa_aplicada) : '',
+      errores: {},
+    })
+  }
+
+  function validarModal(state: ModalModificarState): boolean {
+    const h = state.item.historial
+    const errores: Record<string, string> = {}
+    const alquiler = Number(state.alquiler)
+    if (!state.alquiler || !Number.isFinite(alquiler)) {
+      errores['alquiler_aplicado'] = 'Ingresá un monto de alquiler válido.'
+    } else if (alquiler < h.alquiler_anterior) {
+      errores['alquiler_aplicado'] = 'El nuevo monto no puede ser inferior al monto anterior.'
+    }
+    if (h.expensa_anterior != null) {
+      const expensa = Number(state.expensa)
+      if (!state.expensa || !Number.isFinite(expensa)) {
+        errores['expensa_aplicada'] = 'Ingresá un monto de expensa válido.'
+      } else if (expensa < h.expensa_anterior) {
+        errores['expensa_aplicada'] = 'El nuevo monto no puede ser inferior al monto anterior.'
+      }
+    }
+    if (Object.keys(errores).length > 0) {
+      setModalModificar({ ...state, errores })
+      return false
+    }
+    return true
+  }
+
+  async function guardarModificacion() {
+    if (!modalModificar) return
+    if (!validarModal(modalModificar)) return
+    const h = modalModificar.item.historial
+    const body: Record<string, number> = {
+      alquiler_aplicado: Number(modalModificar.alquiler),
+    }
+    if (h.expensa_anterior != null) {
+      body.expensa_aplicada = Number(modalModificar.expensa)
+    }
+    setGuardando(true)
+    try {
+      await api.patch(`/aumentos/historial/${h.id_historial_aumentos}`, body)
+      toast('Aumento actualizado correctamente.')
+      setModalModificar(null)
+      await cargarProximos()
+      if (tab === 'historial') await cargarHistorial()
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail
+      toast(typeof detail === 'string' ? detail : 'Error al actualizar el aumento.', 'error')
+    } finally {
+      setGuardando(false)
     }
   }
 
@@ -577,7 +953,15 @@ export default function Aumentos() {
       {tab === 'proximos' && (
         loading
           ? <div className="text-center py-12 text-gray-500 text-lg">Cargando...</div>
-          : <ProximosAumentos items={items} />
+          : (
+            <>
+              <PendientesConsolidar
+                items={pendientes}
+                onModificar={abrirModalModificar}
+              />
+              <ProximosAumentos items={items} />
+            </>
+          )
       )}
 
       {tab === 'historial' && (
@@ -586,6 +970,16 @@ export default function Aumentos() {
           loading={loadingHistorial}
           inquilinos={inquilinos}
           onFiltrar={(idInq, anio, mes) => cargarHistorial(idInq, anio, mes)}
+        />
+      )}
+
+      {modalModificar && (
+        <ModalModificarAumento
+          state={modalModificar}
+          setState={setModalModificar}
+          onCerrar={() => setModalModificar(null)}
+          onGuardar={guardarModificacion}
+          guardando={guardando}
         />
       )}
     </div>

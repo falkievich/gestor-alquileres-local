@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from calendar import monthrange
 from typing import Optional, Dict, Any, List, Tuple
 from sqlmodel import Session
@@ -440,6 +440,143 @@ def aplicar_aumento_si_corresponde(session: Session, contrato: Contrato, anio: i
     # Nota: el porcentaje_aumento_usado (legacy) se guarda en el registro
     # mensual DESPUÉS de que este se crea (en el caller, ej. dashboard).
     return porcentaje_usado
+
+
+def modificar_aumento_pendiente(session: Session, id_historial_aumentos: int, data) -> RegistroMensual:
+    """
+    Modifica los montos aplicados de un aumento en estado PENDIENTE.
+
+    El usuario edita directamente los montos (no los porcentajes): los
+    porcentajes aplicados se recalculan siempre en el backend como
+    ((aplicado - anterior) / anterior) * 100.
+
+    Reglas:
+      - Solo PENDIENTE es editable; CONSOLIDADO se rechaza (inmutable).
+      - monto_aplicado >= monto_anterior (puede ser <, = o > que el propuesto).
+      - *_anterior, *_propuesto y porcentajes propuestos quedan congelados.
+      - Sincroniza contrato (base_actual) y registro mensual del período
+        (calculado + total, preservando overrides) en un único commit.
+      - Si no existe el registro mensual del período (inconsistencia), aborta
+        sin cambios parciales.
+
+    `data` es un HistorialAumentoUpdate: solo los campos con valor distinto de
+    None se aplican, permitiendo modificar alquiler y/o expensa de forma
+    independiente.
+    """
+    from fastapi import HTTPException
+    from app.crud import historial_aumentos as crud_historial
+    from app.model.models import HistorialAumento, HistorialAumentoUpdate
+
+    historial = session.get(HistorialAumento, id_historial_aumentos)
+    if not historial:
+        raise HTTPException(status_code=404, detail="Aumento no encontrado")
+
+    # Protección real en backend: un aumento CONSOLIDADO es histórico e
+    # inmutable, sin importar lo que muestre el frontend.
+    if historial.estado != "PENDIENTE":
+        raise HTTPException(
+            status_code=409,
+            detail="El aumento está CONSOLIDADO y no puede modificarse",
+        )
+
+    if data.alquiler_aplicado is None and data.expensa_aplicada is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Debe indicar al menos un monto a aplicar",
+        )
+
+    # Validación de negocio: nunca por debajo del monto anterior.
+    if data.alquiler_aplicado is not None \
+            and data.alquiler_aplicado < historial.alquiler_anterior:
+        raise HTTPException(
+            status_code=400,
+            detail="El nuevo monto de alquiler no puede ser inferior al monto anterior",
+        )
+    if data.expensa_aplicada is not None \
+            and historial.expensa_anterior is not None \
+            and data.expensa_aplicada < historial.expensa_anterior:
+        raise HTTPException(
+            status_code=400,
+            detail="El nuevo monto de expensa no puede ser inferior al monto anterior",
+        )
+
+    # El registro mensual del período debe existir (se creó al generar el
+    # aumento). Si falta es una inconsistencia: abortar sin cambios parciales.
+    registro = crud_registros.get_registro(
+        session, historial.id_contratos, historial.anio, historial.mes)
+    if not registro:
+        raise HTTPException(
+            status_code=409,
+            detail="No existe el registro mensual del período del aumento; "
+                   "no se puede modificar",
+        )
+    if registro.pagado:
+        raise HTTPException(
+            status_code=409,
+            detail="El registro mensual del período ya está pagado; "
+                   "no se puede modificar el aumento",
+        )
+
+    def _porcentaje(monto_anterior: int, monto_aplicado: int) -> float:
+        if not monto_anterior:
+            return 0.0
+        return round(((monto_aplicado - monto_anterior) / monto_anterior) * 100, 2)
+
+    # 1) Historial: actualizar aplicados + porcentajes recalculados.
+    if data.alquiler_aplicado is not None:
+        historial.alquiler_aplicado = data.alquiler_aplicado
+        historial.porcentaje_alquiler_aplicado = _porcentaje(
+            historial.alquiler_anterior, data.alquiler_aplicado)
+    if data.expensa_aplicada is not None:
+        if historial.expensa_anterior is not None:
+            historial.expensa_aplicada = data.expensa_aplicada
+            historial.porcentaje_expensa_aplicado = _porcentaje(
+                historial.expensa_anterior, data.expensa_aplicada)
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="El aumento no tiene expensa",
+            )
+    historial.fecha_actualizacion = datetime.now()
+    session.add(historial)
+
+    # 2) Contrato: la base de futuros aumentos pasa a ser el monto realmente
+    #    aplicado (no se toca *_base_inicial, ni fechas de último aumento).
+    contrato = session.get(Contrato, historial.id_contratos)
+    if not contrato:
+        raise HTTPException(status_code=404, detail="Contrato no encontrado")
+    contrato.alquiler_base_actual = historial.alquiler_aplicado
+    if historial.expensa_aplicada is not None:
+        contrato.expensa_base_actual = historial.expensa_aplicada
+    session.add(contrato)
+
+    # 3) Registro mensual: congelar los montos aplicados y recalcular el total
+    #    con la lógica común (override ?? calculado). Los overrides NO se
+    #    tocan. Se actualiza también el porcentaje_aumento_usado (legacy).
+    registro.alquiler_calculado = historial.alquiler_aplicado
+    if historial.expensa_aplicada is not None:
+        registro.expensa_calculada = historial.expensa_aplicada
+    registro.porcentaje_aumento_usado = historial.porcentaje_alquiler_aplicado
+    alq_efectivo = (
+        registro.alquiler_override
+        if registro.alquiler_override is not None
+        else registro.alquiler_calculado
+    )
+    exp_efectiva = (
+        registro.expensa_override
+        if registro.expensa_override is not None
+        else registro.expensa_calculada
+    )
+    registro.total = calcular_total(
+        alq_efectivo, exp_efectiva, registro.agua, registro.luz, registro.impuesto)
+    session.add(registro)
+
+    # Commit único: historial + contrato + registro quedan consistentes o no
+    # se aplica ningún cambio.
+    session.commit()
+    session.refresh(historial)
+    session.refresh(registro)
+    return registro
 
 
 def calcular_proximo_aumento(contrato: Contrato) -> Dict[str, Any]:

@@ -254,6 +254,17 @@ class HistorialAumentoRead(SQLModel):
     fecha_consolidacion: Optional[datetime] = None
 
 
+class HistorialAumentoUpdate(SQLModel):
+    """Campos editables de un aumento PENDIENTE.
+
+    Solo se pueden modificar los montos finales a aplicar. Los porcentajes
+    aplicados son derivados y los recalcula el backend; los valores
+    anterior/propuesto y los datos ICL están congelados para auditoría.
+    """
+    alquiler_aplicado: Optional[int] = None
+    expensa_aplicada: Optional[int] = None
+
+
 class RegistroMensualCreate(SQLModel):
     id_contratos: int
     anio: int

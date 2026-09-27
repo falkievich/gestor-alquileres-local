@@ -6,6 +6,13 @@ from sqlmodel import Session, select
 from app.model.models import HistorialAumento
 
 
+def get_by_id(
+    session: Session, id_historial_aumentos: int
+) -> Optional[HistorialAumento]:
+    """Devuelve un evento de aumento por su id."""
+    return session.get(HistorialAumento, id_historial_aumentos)
+
+
 def get_by_contrato_periodo(
     session: Session, id_contratos: int, anio: int, mes: int
 ) -> Optional[HistorialAumento]:

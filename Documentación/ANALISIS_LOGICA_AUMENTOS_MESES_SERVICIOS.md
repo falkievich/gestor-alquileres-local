@@ -428,3 +428,20 @@ implementación quedaron superadas varias limitaciones de este análisis:
 - La función "Desmarcar pagado" fue eliminada (un cobro es definitivo).
 - Los campos porcentaje_aumento_usado, ultimo_aumento_* y echa_ultimo_aumento
   se mantienen como legacy de compatibilidad.
+
+
+---
+
+## ACTUALIZACIÓN — Punto 2 implementado
+
+- PATCH /aumentos/historial/{id} (body: HistorialAumentoUpdate, solo montos aplicables)
+  modifica un aumento PENDIENTE: valida plicado >= anterior, recalcula porcentajes
+  aplicados en backend, sincroniza historial + contrato (*_base_actual) + registro
+  mensual del período (obligatorio existir; si falta, aborta con 409) y recalcula el
+  	otal respetando overrides — todo en un único commit.
+- GET /aumentos/historial acepta filtro estado (PENDIENTE/CONSOLIDADO).
+- CONSOLIDADO es inmutable (409 en backend); la proyección futura sigue solo lectura.
+- La UI de Aumentos agrega el bloque "Aumentos pendientes de consolidar" con modal de
+  modificación y "Restaurar propuesta"; el historial muestra solo CONSOLIDADO.
+- Al modificar, lquiler_base_actual queda en el monto aplicado: la siguiente
+  proyección parte de él (no del propuesto ni del anterior).

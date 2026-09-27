@@ -491,3 +491,66 @@ el dato esté disponible.
 Si el mes en que correspondería el aumento es **posterior al mes de echa_fin**, el aumento
 no se aplica: no se modifica el contrato ni se crea historial. Si el aumento cae en el mismo
 mes de vencimiento, sí puede aplicarse. La protección existe en backend, no solo visualmente.
+
+
+---
+
+## PUNTO 2 — Modificación de aumentos PENDIENTES (implementado)
+
+### Qué es un aumento PENDIENTE
+
+Es un aumento ya **generado por el sistema** (existe fila en historial_aumentos con
+estado = PENDIENTE) cuyo mes todavía **no fue cobrado**. Se distingue de:
+
+- **Próximo aumento / proyección:** solo lectura; todavía no generó historial_aumentos
+  y NO se puede modificar (queda fuera de alcance la edición anticipada).
+- **Historial consolidado:** estado = CONSOLIDADO; el mes fue cobrado, es histórico e
+  **inmutable** (protección real en backend: rechaza toda modificación con error 409).
+
+### Dónde se modifica
+
+En la pestaña "Próximos aumentos" de la sección **Aumentos**, dentro del nuevo bloque
+**"Aumentos pendientes de consolidar"** (arriba del listado de proyecciones, que sigue
+funcionando igual). Cada pendiente tiene el botón **"Modificar aumento"**, que abre un
+modal. La pestaña "Historial de aumentos" muestra únicamente CONSOLIDADO
+(filtro estado agregado a GET /aumentos/historial).
+
+### Qué se modifica: montos, no porcentajes
+
+El usuario edita directamente el **monto a aplicar** de Alquiler y/o Expensa (de forma
+independiente). Los porcentajes aplicados **no son editables**: el backend los recalcula
+siempre como ((monto aplicado - monto anterior) / monto anterior) * 100 y el frontend
+los muestra en tiempo real solo como referencia.
+
+### Regla de validación
+
+monto_aplicado >= monto_anterior. Puede ser menor, igual o mayor que la propuesta
+(igual al anterior → 0%). Validado en frontend y backend (HTTP 400 con mensaje claro).
+
+### Restaurar propuesta
+
+Botón **"Restaurar propuesta"** del modal: devuelve los montos a aplicar a los valores
+*_propuesto originales; luego el usuario puede Guardar. No altera los campos propuestos.
+
+### Múltiples modificaciones
+
+Mientras esté PENDIENTE, el aumento puede modificarse todas las veces que se quiera.
+Cada guardado actualiza *_aplicado, recalcula el porcentaje y echa_actualizacion.
+La propuesta original (*_anterior, *_propuesto, % propuestos, datos ICL, tipo,
+período) queda **congelada** para auditoría.
+
+### Sincronización al guardar (transacción única)
+
+1. historial_aumentos: aplicados + porcentajes recalculados + fecha_actualizacion.
+2. contratos: lquiler_base_actual / expensa_base_actual = montos aplicados
+   (el **siguiente aumento proyectado parte de estos valores**, no de los propuestos).
+3. egistros_mensuales: el registro del mismo (contrato, anio, mes) debe existir;
+   si no existe se aborta con error 409 sin cambios parciales. Se actualiza
+   lquiler_calculado / expensa_calculada, el legacy porcentaje_aumento_usado
+   y el 	otal (con override ?? calculado, agua, luz, impuesto).
+4. Los **overrides** (lquiler_override, expensa_override, 
+ota_override) nunca
+   se tocan: la modificación del aumento no los borra ni los altera.
+
+Al cobrar el mes, el aumento pasa a CONSOLIDADO, desaparece del bloque de pendientes y
+queda en el Historial con los valores finales aplicados y los propuestos originales.
