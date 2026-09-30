@@ -431,6 +431,43 @@ informa la última fecha disponible publicada por el BCRA y estima cuántos día
 que el período esté completo. No se muestran montos ni porcentajes estimados hasta tanto
 el dato esté disponible.
 
+**¿Cuándo se toman y se "refrescan" los valores del índice?**
+
+No existe ningún job programado ni caché local de la serie: el sistema NO guarda copia
+del índice, cada vez que necesita el dato lo consulta en vivo (`_fetch_icl_bcra` en
+`backend/app/service/mes_service.py`) a la API del BCRA
+(`https://api.bcra.gob.ar/estadisticas/v4.0/Monetarias/40`), pidiendo el período completo
+con parámetros `Desde` (1º día del mes base) y `Hasta` (último día del mes anterior a la
+vigencia).
+
+Los momentos en que se consulta son:
+
+- **Proyección del próximo aumento:** cada vez que se abre la vista **Aumentos**
+  (`GET /aumentos/`) y, para cada contrato ICL, se devuelve el estado
+  *calculado* o *pendiente* según los datos publicados en ese momento.
+- **Aplicación del aumento:** al preparar el mes en el **Dashboard** o en
+  **Servicios** (`preparar_registro_mes` → `aplicar_aumento_si_corresponde`), cuando
+  `corresponde_aumento` indica que llegó la periodicidad. Aquí el cálculo se
+  materializa: si el BCRA ya publicó el valor final del período, el aumento se aplica
+  y los datos ICL quedan **congelados en `historial_aumentos`**
+  (`icl_inicial`, `icl_final`, `fecha_icl_inicial`, `fecha_icl_final`,
+  `coeficiente_icl`); si no puede calcularse, no se muta nada ni se registra nada.
+- Si ya existe historial para ese (contrato, período), la **propuesta congelada no
+  se recalcula ni se vuelve a consultar la API** (idempotencia).
+
+En cuanto a la publicación del BCRA: la serie se actualiza con un atraso respecto del
+calendario; en la práctica los datos de un mes quedan disponibles alrededor del día 17
+del mes siguiente y la serie publicada llega hasta el día 16. El código **no
+hardcodea esas fechas** simplemente, al momento de cada consulta, verifica si ya existe
+el valor publicado para la fecha de fin del período (`fecha_hasta`):
+
+- Si `fecha_hasta` es futura respecto del día del sistema, o aún no hay valor publicado
+  para esa fecha exacta, devuelve el estado pendiente con la última fecha disponible y
+  los días faltantes estimados.
+- En cuanto el valor para `fecha_hasta` aparece en la serie, el próximo cálculo en vivo
+  ya lo toma y el estado pasa de *pendiente* a *calculado* (y se aplica al preparar el
+  registro mensual si ya entró en vigencia).
+
 ---
 
 ## Sistema de aumentos — Estados e historial (Punto 1)
@@ -479,7 +516,8 @@ el dato esté disponible.
   (coeficiente, ICL inicial/final y fechas del período consultado al BCRA).
 - La vista "Historial de aumentos" lee directamente de esta tabla: muestra el detalle
   (propuesto vs. aplicado, expensa, ICL) expandiendo la fila.
-- El historial antiguo (reconstruido desde egistros_mensuales) **NO se migra**:
+- El historial antiguo (reconstruido desde 
+egistros_mensuales) **NO se migra**:
   la tabla empieza a funcionar desde esta implementación.
 - porcentaje_aumento_usado (en registros mensuales) queda temporalmente como campo legacy
   de compatibilidad; ya no es la fuente de verdad del historial.
@@ -544,7 +582,7 @@ período) queda **congelada** para auditoría.
 1. historial_aumentos: aplicados + porcentajes recalculados + fecha_actualizacion.
 2. contratos: lquiler_base_actual / expensa_base_actual = montos aplicados
    (el **siguiente aumento proyectado parte de estos valores**, no de los propuestos).
-3. egistros_mensuales: el registro del mismo (contrato, anio, mes) debe existir;
+3. registros_mensuales: el registro del mismo (contrato, anio, mes) debe existir;
    si no existe se aborta con error 409 sin cambios parciales. Se actualiza
    lquiler_calculado / expensa_calculada, el legacy porcentaje_aumento_usado
    y el 	otal (con override ?? calculado, agua, luz, impuesto).

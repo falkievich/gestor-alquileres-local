@@ -78,10 +78,21 @@ def historial_aumentos(
         contrato = session.get(Contrato, h.id_contratos)
         if not contrato:
             continue
+        # Los aumentos PENDIENTES de contratos cerrados no se muestran como
+        # pendientes operativos (los CONSOLIDADOS siguen en el historial).
+        if estado == "PENDIENTE" and contrato.estado != 'activo':
+            continue
         if id_inquilinos and contrato.id_inquilinos != id_inquilinos:
             continue
         dep = session.get(Departamento, contrato.id_departamentos)
         inq = session.get(Inquilino, contrato.id_inquilinos)
+
+        atrasado = (h.anio, h.mes) < (hoy.year, hoy.month)
+        se_puede_modificar = (
+            h.estado == "PENDIENTE"
+            and not crud_historial.existe_posterior(
+                session, h.id_contratos, h.anio, h.mes)
+        )
 
         resultado.append({
             "historial": HistorialAumentoRead.model_validate(h),
@@ -95,6 +106,8 @@ def historial_aumentos(
                 else None
             ),
             "hoy": hoy.isoformat(),
+            "atrasado": atrasado,
+            "se_puede_modificar": se_puede_modificar,
         })
 
     return resultado

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import api from '../lib/api'
 import type { DashboardItem } from '../lib/types'
 import { MESES } from '../lib/types'
-import { Save } from 'lucide-react'
+import { Save, Clock } from 'lucide-react'
 import { useToast } from '../lib/ui'
 
 function formatDepto(piso: string | undefined, codigo: string | undefined) {
@@ -16,6 +16,7 @@ interface ServicioRow {
   departamento: DashboardItem['departamento']
   inquilino: DashboardItem['inquilino']
   estado?: 'Pendiente' | 'OK'
+  atrasado?: boolean
 }
 
 export default function Servicios() {
@@ -30,9 +31,10 @@ export default function Servicios() {
     setLoading(true)
     const res = await api.get('/servicios/pendientes')
     setItems(res.data)
-    if (res.data.length > 0) {
-      const item = res.data[0]
-      setAnioMes(`${MESES[item.registro.mes - 1]} ${item.registro.anio}`)
+    // El encabezado siempre refleja el mes actual (no el primer atrasado).
+    const actual = res.data.find((i: ServicioRow) => !i.atrasado)
+    if (actual) {
+      setAnioMes(`${MESES[actual.registro.mes - 1]} ${actual.registro.anio}`)
     }
     // Inicializar valores
     const init: Record<number, { agua: string; luz: string }> = {}
@@ -102,14 +104,21 @@ export default function Servicios() {
                 const v = valores[idReg] ?? { agua: '', luz: '' }
                 const cargado = item.estado === 'OK'
                 return (
-                  <tr key={idReg} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
+                  <tr key={idReg} className={`hover:bg-gray-50 ${item.atrasado ? 'bg-amber-50/50' : ''}`}>
+                    <td className={`px-4 py-3 ${item.atrasado ? 'border-l-4 border-amber-400' : ''}`}>
                       <div className="font-medium text-gray-800">
                         {formatDepto(item.departamento?.piso, item.departamento?.codigo)}
                       </div>
                       {item.departamento?.direccion && (
                         <div className="text-xs text-gray-400 truncate max-w-[180px]" title={item.departamento.direccion}>
                           {item.departamento.direccion}
+                        </div>
+                      )}
+                      {item.atrasado && (
+                        <div className="mt-1">
+                          <span className="inline-flex items-center gap-1 text-xs bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-semibold">
+                            <Clock size={11} /> Atrasado · {MESES[item.registro.mes - 1]} {item.registro.anio}
+                          </span>
                         </div>
                       )}
                     </td>

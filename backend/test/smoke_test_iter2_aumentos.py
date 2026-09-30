@@ -34,7 +34,23 @@ def historial_de(session, id_contratos, anio, mes):
     ).first()
 
 
+def sumar_meses(anio, mes, n):
+    t = mes + n
+    a = anio
+    while t > 12:
+        t -= 12
+        a += 1
+    while t < 1:
+        t += 12
+        a -= 1
+    return a, t
+
+
 ANIO, MES = mes_service.get_mes_actual()
+
+
+def fecha_iso(anio, mes, dia=1):
+    return f"{anio:04d}-{mes:02d}-{dia:02d}"
 
 # ── Preparación de datos ─────────────────────────────────────────────
 def crear_dep(codigo):
@@ -47,9 +63,12 @@ r = client.post("/inquilinos/", json={"nombre_apellido": "TEST P1", "es_actual":
 id_inq = r.json()["id_inquilinos"]
 
 def crear_contrato(dep, **kw):
+    # Base relativa al mes actual: el aumento de C1 (periodicidad 6) corresponde
+    # justo en el mes en curso (inicio = MES-6).
     base = {
         "id_departamentos": dep, "id_inquilinos": id_inq,
-        "fecha_inicio": "2026-03-01", "fecha_fin": "2027-03-01",
+        "fecha_inicio": fecha_iso(*sumar_meses(ANIO, MES, -1)),
+        "fecha_fin": fecha_iso(*sumar_meses(ANIO, MES, 6)),
         "alquiler_base_actual": 100000, "tipo_aumento": "MANUAL",
         "porcentaje_aumento": 10.0, "periodicidad_aumento_meses": 6,
     }
@@ -58,16 +77,19 @@ def crear_contrato(dep, **kw):
     assert r.status_code == 201, r.text
     return r.json()["id_contratos"]
 
-id_c1 = crear_contrato(ids_dep[0], cobra_expensa=True, expensa_base_actual=20000)
-id_c2 = crear_contrato(ids_dep[1], fecha_fin="2026-10-31", fecha_ultimo_aumento="2026-03-01")
-id_c3 = crear_contrato(ids_dep[2], fecha_fin="2026-10-31", fecha_ultimo_aumento="2026-05-01")
+id_c1 = crear_contrato(ids_dep[0], cobra_expensa=True, expensa_base_actual=20000,
+                       fecha_inicio=fecha_iso(*sumar_meses(ANIO, MES, -6)))
+id_c2 = crear_contrato(ids_dep[1], fecha_fin=fecha_iso(*sumar_meses(ANIO, MES, 0)),
+                       fecha_ultimo_aumento=fecha_iso(*sumar_meses(ANIO, MES, -6)))
+id_c3 = crear_contrato(ids_dep[2], fecha_fin=fecha_iso(*sumar_meses(ANIO, MES, 1)),
+                       fecha_ultimo_aumento=fecha_iso(*sumar_meses(ANIO, MES, -5)))
 id_c4 = crear_contrato(ids_dep[3], alquiler_base_actual=500000, cobra_expensa=True,
                        expensa_base_actual=50000, tipo_aumento="ICL",
                        porcentaje_aumento=0, periodicidad_aumento_meses=3,
-                       fecha_ultimo_aumento="2026-06-01")
-id_c5 = crear_contrato(ids_dep[4], fecha_fin="2027-01-01", tipo_aumento="SIN_AUMENTO",
+                       fecha_ultimo_aumento=fecha_iso(*sumar_meses(ANIO, MES, -3)))
+id_c5 = crear_contrato(ids_dep[4], tipo_aumento="SIN_AUMENTO",
                        porcentaje_aumento=0, periodicidad_aumento_meses=0)
-id_c6 = crear_contrato(ids_dep[5], fecha_fin="2027-01-01", impuesto_fijo=5000,
+id_c6 = crear_contrato(ids_dep[5], impuesto_fijo=5000,
                        cobra_luz=True, periodicidad_aumento_meses=12)
 
 # ── Monkeypatch BCRA (sin llamadas reales) ──────────────────────────
@@ -126,8 +148,11 @@ with Session(engine := __import__("app.db", fromlist=["engine"]).engine) as s:
         check("C4 coeficiente=1.15", round(h4.coeficiente_icl or 0, 6) == 1.15, str(h4.coeficiente_icl))
         check("C4 icl_inicial=25", h4.icl_inicial == 25.0)
         check("C4 icl_final=28.75", h4.icl_final == 28.75)
-        check("C4 fecha_icl_inicial", str(h4.fecha_icl_inicial) == f"{ANIO}-06-01", str(h4.fecha_icl_inicial))
-        check("C4 fecha_icl_final", str(h4.fecha_icl_final) == f"{ANIO}-08-31", str(h4.fecha_icl_final))
+        check("C4 fecha_icl_inicial", str(h4.fecha_icl_inicial) == fecha_iso(*sumar_meses(ANIO, MES, -3)),
+              str(h4.fecha_icl_inicial))
+        check("C4 fecha_icl_final", str(h4.fecha_icl_final) == fecha_iso(*sumar_meses(ANIO, MES, -1),
+              dia=mes_service._ultimo_dia_mes(*sumar_meses(ANIO, MES, -1)).day),
+              str(h4.fecha_icl_final))
         check("C4 propuesto=575000", h4.alquiler_propuesto == 575000, str(h4.alquiler_propuesto))
         check("C4 % full precision", round(h4.porcentaje_alquiler_propuesto, 6) == 15.0)
 
@@ -175,14 +200,15 @@ with Session(engine) as s:
     check("contrato no recalculado", s.get(Contrato, id_c1).alquiler_base_actual == 110000)
 
 # ── 6) fecha_fin: posterior al vencimiento NO se aplica ────────────
+ANIO_F, MES_F = sumar_meses(ANIO, MES, 2)  # MES+2, posterior a fecha_fin (MES+1)
 with Session(engine) as s:
     c3 = s.get(Contrato, id_c3)
-    res = mes_service.aplicar_aumento_si_corresponde(s, c3, ANIO, 11)
+    res = mes_service.aplicar_aumento_si_corresponde(s, c3, ANIO_F, MES_F)
 check("fecha_fin posterior: no aplica", res is None)
 with Session(engine) as s:
     c3 = s.get(Contrato, id_c3)
     check("C3 contrato sin mutar", c3.alquiler_base_actual == 100000)
-    check("C3 sin historial", historial_de(s, id_c3, ANIO, 11) is None)
+    check("C3 sin historial", historial_de(s, id_c3, ANIO_F, MES_F) is None)
 
 # ── ICL pendiente: no aplica, no muta, no registra ─────────────────
 def fake_fetch_error(fecha_desde, fecha_hasta):
@@ -191,7 +217,7 @@ def fake_fetch_error(fecha_desde, fecha_hasta):
 mes_service._fetch_icl_bcra = fake_fetch_error
 id_c7 = crear_contrato(ids_dep[6], tipo_aumento="ICL", alquiler_base_actual=400000,
                        porcentaje_aumento=0, periodicidad_aumento_meses=3,
-                       fecha_ultimo_aumento="2026-06-01")
+                       fecha_ultimo_aumento=fecha_iso(*sumar_meses(ANIO, MES, -3)))
 with Session(engine) as s:
     c7 = s.get(Contrato, id_c7)
     res = mes_service.aplicar_aumento_si_corresponde(s, c7, ANIO, MES)
@@ -289,7 +315,10 @@ if item_c5:
     check("aumentos: C5 sin próximo", item_c5["proximo_aumento"]["proximo_anio"] is None)
 item_c1 = next((i for i in r.json() if i["contrato"]["id_contratos"] == id_c1), None)
 if item_c1:
-    check("aumentos: C1 próximo 2027-03", (item_c1["proximo_aumento"]["proximo_anio"], item_c1["proximo_aumento"]["proximo_mes"]) == (2027, 3),
+    # Próximo = fecha_ultimo (MES) + periodicidad 6
+    anio_p, mes_p = sumar_meses(ANIO, MES, 6)
+    check("aumentos: C1 próximo aumento",
+          (item_c1["proximo_aumento"]["proximo_anio"], item_c1["proximo_aumento"]["proximo_mes"]) == (anio_p, mes_p),
           f"={item_c1['proximo_aumento']['proximo_anio']}-{item_c1['proximo_aumento']['proximo_mes']}")
 
 # ── Limpieza ───────────────────────────────────────────────────────

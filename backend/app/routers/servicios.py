@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session
+from sqlmodel import Session, select
 from app.db import get_session
 from app.crud import contratos as crud_contratos
 from app.crud import registros as crud_registros
@@ -50,7 +50,50 @@ def listar_pendientes(session: Session = Depends(get_session)):
             "departamento": dep,
             "inquilino": inq,
             "estado": estado,
+            "atrasado": False,
         })
+
+    # Servicios atrasados: registros de meses anteriores sin cobrar que
+    # todavía necesitan completar Agua/Luz. Solo lectura (ya existen);
+    # incluye contratos finalizados mientras el registro siga pendiente.
+    from sqlalchemy import or_
+    from app.model.models import Departamento, Inquilino
+    registros_atrasados = session.exec(
+        select(RegistroMensual).where(
+            RegistroMensual.pagado == False,  # noqa: E712
+            or_(
+                RegistroMensual.anio < anio,
+                (RegistroMensual.anio == anio) & (RegistroMensual.mes < mes),
+            ),
+        ).order_by(
+            RegistroMensual.anio.asc(), RegistroMensual.mes.asc()
+        )
+    ).all()
+
+    for reg_atrasado in registros_atrasados:
+        contrato = session.get(Contrato, reg_atrasado.id_contratos)
+        if not contrato:
+            continue
+        # Solo contratos activos: los pendientes de contratos cerrados
+        # permanecen en DB pero no reaparecen en las vistas operativas.
+        if contrato.estado != 'activo':
+            continue
+        if not contrato.cobra_agua and not contrato.cobra_luz:
+            continue
+        estado = calcular_estado_servicios(contrato, reg_atrasado)
+        if estado != "Pendiente":
+            continue
+        dep = session.get(Departamento, contrato.id_departamentos)
+        inq = session.get(Inquilino, contrato.id_inquilinos)
+        resultado.append({
+            "contrato": ContratoRead.model_validate(contrato),
+            "registro": reg_atrasado,
+            "departamento": dep,
+            "inquilino": inq,
+            "estado": estado,
+            "atrasado": True,
+        })
+
     return resultado
 
 

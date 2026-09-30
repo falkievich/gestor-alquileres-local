@@ -96,6 +96,7 @@ export interface DashboardItem {
   anio: number
   mes: number
   total: number
+  atrasado?: boolean
 }
 
 export interface HistorialItem {
@@ -174,6 +175,8 @@ export interface HistorialAumentoItem {
   inquilino?: Inquilino
   diferencia_aplicada: number
   diferencia_expensa_aplicada?: number
+  atrasado?: boolean
+  se_puede_modificar?: boolean
 }
 
 export const PISOS = ['Planta baja', 'Piso 1', 'Piso 2', 'Piso 3']

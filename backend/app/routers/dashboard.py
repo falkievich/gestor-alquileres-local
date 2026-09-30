@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session
+from sqlmodel import Session, select
 from typing import List, Optional
 from datetime import date
 from app.db import get_session
@@ -79,6 +79,65 @@ def get_dashboard(session: Session = Depends(get_session)):
             "anio": anio,
             "mes": mes,
             "total": total_calculado,
+            "atrasado": False,
+        })
+
+    # Cobros atrasados: registros de meses anteriores sin cobrar. Se listan
+    # con sus montos históricos congelados (override ?? calculado), sin
+    # preparar ni crear nada. Incluye contratos finalizados mientras el
+    # registro no esté pagado y su mes esté dentro de la vigencia.
+    from sqlalchemy import or_
+    registros_atrasados = session.exec(
+        select(RegistroMensual).where(
+            RegistroMensual.pagado == False,  # noqa: E712
+            or_(
+                RegistroMensual.anio < anio,
+                (RegistroMensual.anio == anio) & (RegistroMensual.mes < mes),
+            ),
+        ).order_by(
+            RegistroMensual.anio.asc(), RegistroMensual.mes.asc()
+        )
+    ).all()
+
+    for reg_atrasado in registros_atrasados:
+        contrato = session.get(Contrato, reg_atrasado.id_contratos)
+        if not contrato:
+            continue
+        # Solo contratos activos: los pendientes de contratos cerrados
+        # permanecen en DB pero no reaparecen en las vistas operativas.
+        if contrato.estado != 'activo':
+            continue
+        from app.model.models import Departamento, Inquilino
+        dep = session.get(Departamento, contrato.id_departamentos)
+        inq = session.get(Inquilino, contrato.id_inquilinos)
+
+        alq_efectivo = (
+            reg_atrasado.alquiler_override
+            if reg_atrasado.alquiler_override is not None
+            else reg_atrasado.alquiler_calculado
+        )
+        exp_efectiva = (
+            reg_atrasado.expensa_override
+            if reg_atrasado.expensa_override is not None
+            else reg_atrasado.expensa_calculada
+        )
+        total_efectivo = calcular_total(
+            alq_efectivo, exp_efectiva,
+            reg_atrasado.agua, reg_atrasado.luz, reg_atrasado.impuesto)
+
+        estado_servicios = calcular_estado_servicios(contrato, reg_atrasado)
+
+        resultado.append({
+            "contrato": ContratoRead.model_validate(contrato),
+            "registro": RegistroMensualRead.model_validate(reg_atrasado),
+            "departamento": DepartamentoRead.model_validate(dep) if dep else None,
+            "inquilino": InquilinoRead.model_validate(inq) if inq else None,
+            "estado_servicios": estado_servicios,
+            "vencido": contrato.fecha_fin < hoy,
+            "anio": reg_atrasado.anio,
+            "mes": reg_atrasado.mes,
+            "total": total_efectivo,
+            "atrasado": True,
         })
 
     return resultado

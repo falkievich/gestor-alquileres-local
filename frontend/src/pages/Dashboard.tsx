@@ -5,7 +5,7 @@ import { formatMoneda, MESES } from '../lib/types'
 import { useToast, ModalShell } from '../lib/ui'
 import {
   CheckCircle2, AlertCircle, XCircle, Eye, EyeOff,
-  RefreshCw, Printer, HardDriveDownload, SlidersHorizontal, ListChecks, Filter
+  RefreshCw, Printer, HardDriveDownload, SlidersHorizontal, ListChecks, Filter, Clock
 } from 'lucide-react'
 
 function formatDepto(piso: string | undefined, codigo: string | undefined) {
@@ -137,7 +137,7 @@ export default function Dashboard() {
     if (seleccionados.size === 0) return
     const delta = Number(ajusteMasivoData.alquiler_delta)
     const promises = Array.from(seleccionados).map(idReg => {
-      const item = visibles.find(i => i.registro.id_registros_mensuales === idReg)
+      const item = visiblesCobrables.find(i => i.registro.id_registros_mensuales === idReg)
       if (!item) return Promise.resolve()
       const params: Record<string, string | number> = {
         alquiler_override: item.registro.alquiler_calculado + delta,
@@ -164,10 +164,10 @@ export default function Dashboard() {
   }
 
   function toggleTodos() {
-    if (seleccionados.size === visibles.length) {
+    if (seleccionados.size === visiblesCobrables.length) {
       setSeleccionados(new Set())
     } else {
-      setSeleccionados(new Set(visibles.map(i => i.registro.id_registros_mensuales)))
+      setSeleccionados(new Set(visiblesCobrables.map(i => i.registro.id_registros_mensuales)))
     }
   }
 
@@ -178,8 +178,17 @@ export default function Dashboard() {
 
   function handleImprimir() { window.print() }
 
-  const visibles = items.filter(i => !i.registro.pagado)
-  const mesActual = items.length > 0 ? `${MESES[items[0].mes - 1]} ${items[0].anio}` : ''
+  // Atrasados (meses anteriores sin cobrar) arriba, más antiguo → más reciente;
+  // luego los registros del mes actual con su comportamiento normal.
+  const atrasados = items.filter(i => i.atrasado)
+  const actuales = items.filter(i => !i.atrasado && !i.registro.pagado)
+  const filas = [...atrasados, ...actuales]
+  // La selección masiva solo opera sobre registros del mes actual.
+  const visiblesCobrables = actuales
+  const visibles = filas
+  const mesActual = actuales.length > 0
+    ? `${MESES[actuales[0].mes - 1]} ${actuales[0].anio}`
+    : ''
 
   return (
     <div className="p-6">
@@ -388,9 +397,9 @@ export default function Dashboard() {
             )}
           </div>
         </div>
-      ) : items.length === 0 ? (
+      ) : filas.length === 0 ? (
         <div className="text-center py-12 text-gray-400">
-          No hay contratos activos para el mes actual.
+          No hay cobros para mostrar.
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
@@ -407,7 +416,7 @@ export default function Dashboard() {
                     <input
                       type="checkbox"
                       className="w-4 h-4 rounded accent-yellow-500 cursor-pointer"
-                      checked={seleccionados.size === visibles.length && visibles.length > 0}
+                      checked={seleccionados.size === visiblesCobrables.length && visiblesCobrables.length > 0}
                       onChange={toggleTodos}
                       title="Seleccionar todos"
                     />
@@ -434,21 +443,23 @@ export default function Dashboard() {
                 return (
                   <tr
                     key={reg.id_registros_mensuales}
-                    className={`hover:bg-gray-50 ${modoSeleccion && seleccionados.has(reg.id_registros_mensuales) ? 'bg-yellow-50' : ''}`}
-                    onClick={modoSeleccion ? () => toggleSeleccion(reg.id_registros_mensuales) : undefined}
-                    style={modoSeleccion ? { cursor: 'pointer' } : undefined}
+                    className={`hover:bg-gray-50 ${item.atrasado ? 'bg-amber-50/50' : ''} ${modoSeleccion && !item.atrasado && seleccionados.has(reg.id_registros_mensuales) ? 'bg-yellow-50' : ''}`}
+                    onClick={modoSeleccion && !item.atrasado ? () => toggleSeleccion(reg.id_registros_mensuales) : undefined}
+                    style={modoSeleccion && !item.atrasado ? { cursor: 'pointer' } : undefined}
                   >
                     {modoSeleccion && (
                       <td className="px-4 py-3 print:hidden" onClick={e => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          className="w-4 h-4 rounded accent-yellow-500 cursor-pointer"
-                          checked={seleccionados.has(reg.id_registros_mensuales)}
-                          onChange={() => toggleSeleccion(reg.id_registros_mensuales)}
-                        />
+                        {!item.atrasado && (
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 rounded accent-yellow-500 cursor-pointer"
+                            checked={seleccionados.has(reg.id_registros_mensuales)}
+                            onChange={() => toggleSeleccion(reg.id_registros_mensuales)}
+                          />
+                        )}
                       </td>
                     )}
-                    <td className="px-4 py-3">
+                    <td className={`px-4 py-3 ${item.atrasado ? 'border-l-4 border-amber-400' : ''}`}>
                       <div className="font-medium text-gray-800">
                         {formatDepto(item.departamento?.piso, item.departamento?.codigo)}
                       </div>
@@ -458,6 +469,11 @@ export default function Dashboard() {
                         </div>
                       )}
                       <div className="flex gap-1 mt-1 flex-wrap">
+                        {item.atrasado && (
+                          <span className="inline-flex items-center gap-1 text-xs bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-semibold">
+                            <Clock size={11} /> Atrasado · {MESES[item.mes - 1]} {item.anio}
+                          </span>
+                        )}
                         {item.vencido && (
                           <span className="inline-block text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-semibold">
                             Vencido

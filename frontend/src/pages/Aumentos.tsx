@@ -84,17 +84,19 @@ function PendientesConsolidar({
           Aumentos pendientes de consolidar
         </h3>
         <span className="text-xs text-gray-400">
-          generados, todavía no cobrados — se pueden modificar
+          generados, todavía no cobrados — los recientes se pueden modificar
         </span>
       </div>
       <div className="space-y-3">
-        {items.map(item => {
+        {[...items]
+          .sort((a, b) => (a.historial.anio - b.historial.anio) || (a.historial.mes - b.historial.mes))
+          .map(item => {
           const h = item.historial
           const conExpensa = h.expensa_anterior != null
           return (
             <div
               key={h.id_historial_aumentos}
-              className="rounded-xl shadow-sm overflow-hidden border border-yellow-300 bg-yellow-50/50"
+              className={`rounded-xl shadow-sm overflow-hidden border bg-yellow-50/50 ${item.atrasado ? 'border-amber-400 border-l-4' : 'border-yellow-300'}`}
             >
               <div className="px-5 py-4">
                 <div className="flex items-start justify-between gap-4 mb-3">
@@ -105,6 +107,11 @@ function PendientesConsolidar({
                       </span>
                       <TipoBadge tipo={h.tipo_aumento} />
                       <EstadoAumentoBadge estado="PENDIENTE" />
+                      {item.atrasado && (
+                        <span className="inline-flex items-center gap-1 text-xs bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-semibold">
+                          <Clock size={11} /> Atrasado · {MESES[h.mes - 1]} {h.anio}
+                        </span>
+                      )}
                     </div>
                     <div className="text-sm text-gray-500 mt-0.5">
                       {item.inquilino?.nombre_apellido}
@@ -180,10 +187,19 @@ function PendientesConsolidar({
                   )}
                 </div>
 
-                <div className="flex justify-end mt-3">
+                <div className="flex items-center justify-end gap-3 mt-3">
+                  {item.atrasado && !item.se_puede_modificar && (
+                    <span className="text-xs text-gray-500">
+                      Existe un aumento posterior: este solo puede cobrarse, no modificarse.
+                    </span>
+                  )}
                   <button
                     onClick={() => onModificar(item)}
-                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 transition"
+                    disabled={item.atrasado && !item.se_puede_modificar}
+                    title={item.atrasado && !item.se_puede_modificar
+                      ? 'Ya existe un aumento posterior para este contrato'
+                      : undefined}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-300 transition"
                   >
                     <Pencil size={14} /> Modificar aumento
                   </button>

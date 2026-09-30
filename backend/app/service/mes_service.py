@@ -502,6 +502,17 @@ def modificar_aumento_pendiente(session: Session, id_historial_aumentos: int, da
             detail="El aumento está CONSOLIDADO y no puede modificarse",
         )
 
+    # Protección de la cadena histórica: si ya existe un aumento posterior
+    # para este contrato, el PENDIENTE viejo solo puede cobrarse/consolidarse,
+    # no modificarse (modificarlo rompería la continuidad de los montos).
+    if crud_historial.existe_posterior(
+            session, historial.id_contratos, historial.anio, historial.mes):
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede modificar un aumento de un mes anterior al "
+                   "último aumento generado del contrato",
+        )
+
     if data.alquiler_aplicado is None and data.expensa_aplicada is None:
         raise HTTPException(
             status_code=400,

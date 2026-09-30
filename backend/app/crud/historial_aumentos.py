@@ -13,6 +13,22 @@ def get_by_id(
     return session.get(HistorialAumento, id_historial_aumentos)
 
 
+def existe_posterior(
+    session: Session, id_contratos: int, anio: int, mes: int
+) -> bool:
+    """True si existe un historial de aumento posterior (mes mayor) para el contrato."""
+    from sqlalchemy import or_
+    return session.exec(
+        select(HistorialAumento).where(
+            HistorialAumento.id_contratos == id_contratos,
+            or_(
+                HistorialAumento.anio > anio,
+                (HistorialAumento.anio == anio) & (HistorialAumento.mes > mes),
+            ),
+        )
+    ).first() is not None
+
+
 def get_by_contrato_periodo(
     session: Session, id_contratos: int, anio: int, mes: int
 ) -> Optional[HistorialAumento]:
