@@ -1,123 +1,91 @@
-# Depto Manager — Guía de uso
+# Depto Manager — Guía para el cliente
 
 ## Requisitos
 
-Ninguno. No es necesario instalar Python, Node ni ninguna dependencia.
-Todo lo necesario está incluido en esta carpeta.
+Ninguno. No hay que instalar Python, Node ni ninguna dependencia:
+todo está incluido en esta carpeta.
+
+> Nota: para calcular aumentos con **ICL** la PC necesita conexión a
+> internet en el momento del cálculo (consulta el índice publicado por el
+> BCRA). Todo el resto del programa funciona sin internet.
 
 ---
 
-## Cómo ejecutar
+## Cómo abrir
 
 1. Doble clic en **`start.bat`**
-2. Se abrirá el navegador automáticamente en `http://127.0.0.1:8000`
-3. Para cerrar el programa, cerrá la ventana de terminal que se abrió
+2. Se abre el navegador automáticamente en `http://127.0.0.1:8000`
+3. Para cerrar el programa, cierra la ventana de terminal que se abrió
 
 ---
 
-## Estructura de la carpeta
+## Estructura de la carpeta (lo mínimo que hay que saber)
 
 ```
 DeptoManager/
-├── start.bat               ← Ejecutar la aplicación
-├── update.bat              ← Actualizar dependencias (solo para el desarrollador)
-├── build-frontend.bat      ← Regenerar interfaz (solo para el desarrollador)
-├── python/                 ← Python embebido (no tocar)
-├── backend/                ← Código del servidor
-│   ├── app/
-│   └── requirements.txt
-├── frontend/
-│   └── dist/               ← Interfaz web generada (no tocar)
-└── base_de_datos/
-    └── alquileres.sqlite   ← Base de datos (aquí están tus datos)
+├── start.bat               ← Ejecutar la aplicación (doble clic)
+├── python/                 ← No tocar
+├── backend/                ← No tocar
+├── frontend/dist/          ← No tocar
+├── base_de_datos/
+│   └── alquileres.sqlite   ← Tus datos están acá
+└── backups/                ← Copias de seguridad generadas por el sistema
 ```
+
+Todo lo demás: no tocar.
+
+---
+
+## Dónde están tus datos
+
+- Todos los datos se guardan en `base_de_datos/alquileres.sqlite`.
+- Los archivos de contratos (PDF/DOCX) también quedan dentro de esa base.
+
+---
+
+## Cómo hacer backup
+
+- Opción recomendada: botón **Backup** en el Dashboard. Guarda una copia
+  automática en la carpeta `backups/` (con fecha y hora en el nombre).
+- Backup manual: con el programa **cerrado**, copiar
+  `base_de_datos/alquileres.sqlite` a otra carpeta (pen drive, etc.).
+- Se recomienda hacer backup con frecuencia, especialmente antes de
+  actualizaciones del sistema.
 
 ---
 
 ## Cómo desinstalar
 
-Simplemente **borrá esta carpeta completa**.
-No queda nada instalado en el sistema (ni Python, ni librerías, ni configuraciones).
-
----
-
-## Cómo actualizar (para el desarrollador)
-
-**Antes de cualquier actualización:** si el cliente ya tiene datos cargados, hacer backup de `base_de_datos/alquileres.sqlite` (o pedirle que use el botón "Backup" del Dashboard).
-
----
-
-### Caso 1: Solo cambia el código del backend (`backend/app/`)
-Cuando: cambiaste archivos Python del backend pero NO tocaste el frontend ni `requirements.txt`.
-
-1. Reemplazar los archivos dentro de `backend/app/` con la versión nueva
-2. Volver a ejecutar `start.bat`
-
-Si también cambiaste `requirements.txt` (nuevas dependencias):
-1. Reemplazar los archivos de `backend/app/` y `backend/requirements.txt`
-2. Ejecutar `update.bat` (instala las dependencias nuevas en el Python embebido)
-3. Volver a ejecutar `start.bat`
-
----
-
-### Caso 2: Solo cambia el frontend (`frontend/src/`)
-Cuando: cambiaste código React pero NO el backend.
-
-1. En la máquina de desarrollo ejecutar `build-frontend.bat` (regenera `frontend/dist/`)
-2. Copiar la carpeta `frontend/dist/` generada y reemplazar la del cliente
-3. Volver a ejecutar `start.bat`
-
-⚠️ Importante: al cliente **nunca se le copia `frontend/src/` ni `node_modules/`**, solo la carpeta `dist/` ya compilada.
-
----
-
-### Caso 3: Cambian el backend y el frontend (ej. nueva funcionalidad completa)
-Cuando: los cambios incluyen código Python y React a la vez.
-
-1. En la máquina de desarrollo ejecutar `build-frontend.bat`
-2. Hacer backup de `base_de_datos/alquileres.sqlite` del cliente
-3. Copiar al cliente:
-   - `backend/app/` (y `backend/requirements.txt` si cambió → + `update.bat`)
-   - `frontend/dist/` (la versión ya compilada)
-   - `start.bat` si cambió
-4. Ejecutar `start.bat`: si el backend agrega columnas o tablas nuevas a la base, la migración corre automáticamente al arrancar (no hay que tocar la DB a mano, los datos existentes se conservan)
-5. Verificación rápida: abrir la app y probar una función de lo nuevo (ej. editar un contrato)
-
----
-
-### Caso 4: Actualización completa (ZIP nuevo)
-Cuando: hay muchos cambios dispersos y es más seguro reemplazar todo.
-
-1. Hacer backup de `base_de_datos/alquileres.sqlite` del cliente y guardarlo fuera de la carpeta
-2. Reemplazar la carpeta completa del proyecto con el ZIP nuevo
-3. Restaurar el `alquileres.sqlite` del backup en `base_de_datos/`
-4. Ejecutar `start.bat`
-
----
-
-### ¿Cuándo NO hay que hacer nada extra?
-- Si el backend agrega columnas a tablas existentes (migraciones livianas): se aplican solas al ejecutar `start.bat`, sin pasos manuales ni riesgo para los datos.
-- Si solo cambió `start.bat`, `build-frontend.bat` u otros scripts: copiar únicamente ese archivo.
-
----
-
-## Base de datos
-
-Los datos se guardan en `base_de_datos/alquileres.sqlite`.
-Si querés hacer un backup manual, copiá ese archivo a otro lugar.
-
-El sistema también tiene backup integrado desde la interfaz (botón "Backup" en el Dashboard).
+Simplemente borra esta carpeta completa.
+No queda nada instalado en el sistema (ni Python, ni librerías, ni
+configuraciones). Si querés conservar los datos, antes copiá
+`base_de_datos/alquileres.sqlite` a otro lugar.
 
 ---
 
 ## Problemas frecuentes
 
 **El navegador no se abre solo:**
-→ Abrir manualmente `http://127.0.0.1:8000` en el navegador
+→ Abrir manualmente `http://127.0.0.1:8000` en el navegador.
 
 **Puerto 8000 en uso:**
-→ Cerrar otra instancia del programa o reiniciar la PC
+→ Cerrar otra instancia del programa (otra ventana de terminal abierta) o
+reiniciar la PC.
 
-**Error al iniciar:**
-→ Verificar que la carpeta `python/` existe y contiene `python.exe`
-→ Ejecutar `update.bat` para reinstalar dependencias
+**Error al iniciar / falta `python.exe`:**
+→ Verificar que la carpeta `python/` existe dentro de esta carpeta.
+Si falta alguna librería, contactar al soporte para reinstalarla
+(el técnico puede ejecutar `update.bat`).
+
+**La primera vez, Windows o el antivirus muestra un aviso:**
+→ Es normal con programas portable. Elegir "Ejecutar igualmente" o agregar
+la carpeta a las excepciones del antivirus.
+
+**No calcula el aumento de un contrato ICL y aparece "pendiente":**
+→ Es normal si el BCRA todavía no publicó los valores del período; la
+pantalla indica la última fecha disponible y cuántos días faltan.
+Verificar conexión a internet y volver a entrar más tarde.
+
+**Actualicé y no veo los cambios:**
+→ Cerrar el programa, volver a abrirlo; si sigue igual, abrir el navegador
+en modo incógnito o vaciar la caché.
