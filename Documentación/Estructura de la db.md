@@ -113,4 +113,57 @@ CREATE TABLE registros_mensuales (
 
     INDEX idx_registros_anio_mes (anio, mes)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -------------------------------------------------------------
+-- Tabla: historial_aumentos
+-- Fuente de verdad del historial de aumentos (desde el Punto 1).
+-- El historial antiguo NO se migra: la tabla empieza de cero.
+-- Estados: PENDIENTE (generado, aun no cobrado) / CONSOLIDADO (cobrado, inmutable).
+-- *_propuesto: monto calculado originalmente por el sistema (congelado).
+-- *_aplicado: monto final a cobrar (en esta etapa siempre == propuesto).
+-- Campos ICL: NULL cuando el aumento es MANUAL.
+-- Campos de expensa: NULL cuando el contrato no cobra expensa.
+-- -------------------------------------------------------------
+CREATE TABLE historial_aumentos (
+    id_historial_aumentos               INT             NOT NULL AUTO_INCREMENT,
+    id_contratos                        INT             NOT NULL,
+    anio                                INT             NOT NULL,
+    mes                                 INT             NOT NULL,
+    estado                              VARCHAR(20)     NOT NULL DEFAULT 'PENDIENTE',
+    tipo_aumento                        VARCHAR(20)     NOT NULL,
+    alquiler_anterior                   INT             NOT NULL,
+    alquiler_propuesto                  INT             NOT NULL,
+    alquiler_aplicado                   INT             NOT NULL,
+    porcentaje_alquiler_propuesto       DOUBLE          NOT NULL,
+    porcentaje_alquiler_aplicado        DOUBLE          NOT NULL,
+    expensa_anterior                    INT                 NULL,
+    expensa_propuesta                   INT                 NULL,
+    expensa_aplicada                    INT                 NULL,
+    porcentaje_expensa_propuesto        DOUBLE              NULL,
+    porcentaje_expensa_aplicado         DOUBLE              NULL,
+    coeficiente_icl                     DOUBLE              NULL,
+    icl_inicial                         DOUBLE              NULL,
+    icl_final                           DOUBLE              NULL,
+    fecha_icl_inicial                   DATE                NULL,
+    fecha_icl_final                     DATE                NULL,
+    fecha_creacion                      DATETIME        NOT NULL,
+    fecha_actualizacion                 DATETIME        NOT NULL,
+    fecha_consolidacion                 DATETIME            NULL,
+
+    PRIMARY KEY (id_historial_aumentos),
+
+    CONSTRAINT uq_historial_contrato_periodo
+        UNIQUE (id_contratos, anio, mes),
+
+    CONSTRAINT ck_historial_mes_rango
+        CHECK (mes >= 1 AND mes <= 12),
+
+    CONSTRAINT fk_historial_aumentos_contratos
+        FOREIGN KEY (id_contratos)
+        REFERENCES contratos (id_contratos)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+
+    INDEX idx_historial_periodo (anio, mes)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```

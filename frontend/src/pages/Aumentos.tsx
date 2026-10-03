@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../lib/api'
-import type { AumentoItem, AumentoHistorialItem, Inquilino } from '../lib/types'
+import type { AumentoItem, HistorialAumentoItem, Inquilino } from '../lib/types'
 import { MESES, formatMoneda, formatFecha } from '../lib/types'
 import {
   TrendingUp,
@@ -31,9 +31,26 @@ function TipoBadge({ tipo }: { tipo?: string }) {
       </span>
     )
   }
+  if (tipo === 'SIN_AUMENTO') {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-200 text-gray-600">
+        SIN AUMENTO
+      </span>
+    )
+  }
   return (
     <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
       MANUAL
+    </span>
+  )
+}
+
+function EstadoAumentoBadge({ estado }: { estado: string }) {
+  return (
+    <span className={`inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full ${
+      estado === 'CONSOLIDADO' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+    }`}>
+      {estado}
     </span>
   )
 }
@@ -106,6 +123,8 @@ function ProximosAumentos({ items }: { items: AumentoItem[] }) {
                   <div className="text-xs mt-1">
                     {p.requires_fecha_ultimo ? (
                       <span className="flex items-center gap-1 justify-end text-amber-600"><AlertTriangle size={11} /> Falta fecha</span>
+                    ) : (p.tipo_aumento ?? item.contrato.tipo_aumento) === 'SIN_AUMENTO' ? (
+                      <span className="text-gray-500">Sin aumentos</span>
                     ) : !p.alquiler_nuevo && !iclPendiente ? (
                       <span className="text-gray-400">Sin aumento</span>
                     ) : iclPendiente ? (
@@ -216,7 +235,9 @@ function ProximosAumentos({ items }: { items: AumentoItem[] }) {
                     ICL pendiente de cálculo
                   </div>
                   {p.icl_error ? (
-                    <p className="text-red-600 text-xs">{p.icl_error}</p>
+                    <p className="text-red-600 text-xs">
+                      El Banco Central (BCRA) todavía no tiene disponible la información para calcular el aumento de este período. Volvé a intentarlo más tarde.
+                    </p>
                   ) : (
                     <div className="text-amber-700 text-xs space-y-1">
                       {p.ultima_fecha_disponible_bcra && (
@@ -257,7 +278,7 @@ function HistorialAumentos({
   inquilinos,
   onFiltrar,
 }: {
-  items: AumentoHistorialItem[]
+  items: HistorialAumentoItem[]
   loading: boolean
   inquilinos: Inquilino[]
   onFiltrar: (idInq: string, anio: string, mes: string) => void
@@ -265,6 +286,7 @@ function HistorialAumentos({
   const [filtroInq, setFiltroInq] = useState('')
   const [filtroAnio, setFiltroAnio] = useState('')
   const [filtroMes, setFiltroMes] = useState('')
+  const [detalleAbierto, setDetalleAbierto] = useState<Set<number>>(new Set())
 
   function aplicar() {
     onFiltrar(filtroInq, filtroAnio, filtroMes)
@@ -275,6 +297,15 @@ function HistorialAumentos({
     setFiltroAnio('')
     setFiltroMes('')
     onFiltrar('', '', '')
+  }
+
+  function toggleDetalle(idHistorial: number) {
+    setDetalleAbierto(prev => {
+      const next = new Set(prev)
+      if (next.has(idHistorial)) next.delete(idHistorial)
+      else next.add(idHistorial)
+      return next
+    })
   }
 
   const aniosDisponibles = [2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030]
@@ -314,57 +345,153 @@ function HistorialAumentos({
       ) : items.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <History size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="text-sm">Aun no hay aumentos aplicados registrados.</p>
-          <p className="text-xs text-gray-300 mt-1">Los aumentos se registraran automaticamente cuando se procesen en el dashboard.</p>
+          <p className="text-sm">Aun no hay aumentos registrados.</p>
+          <p className="text-xs text-gray-300 mt-1">Los aumentos se registran automaticamente cuando corresponden y se consolidan al cobrar el mes.</p>
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="grid grid-cols-[1fr_2fr_1fr_1fr_1fr_1fr_1fr] gap-3 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          <div className="grid grid-cols-[1fr_2fr_1.4fr_1fr_1fr_1fr_1fr] gap-3 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wide">
             <span className="text-center">Mes / Ano</span>
             <span>Departamento / Inquilino</span>
-            <span className="text-center">Tipo</span>
+            <span className="text-center">Tipo / Estado</span>
             <span>% Aplicado</span>
             <span>Alquiler anterior</span>
-            <span>Alquiler nuevo</span>
+            <span>Alquiler aplicado</span>
             <span>Diferencia</span>
           </div>
 
           <div className="divide-y divide-gray-100">
             {items.map(item => {
-              const diferencia = item.alquiler_anterior != null ? item.alquiler_nuevo - item.alquiler_anterior : null
+              const h = item.historial
+              const idHistorial = h.id_historial_aumentos
               const dep = item.departamento
-              const mesLabel = `${MESES[item.registro.mes - 1]} ${item.registro.anio}`
+              const mesLabel = `${MESES[h.mes - 1]} ${h.anio}`
+              const abierto = idHistorial != null && detalleAbierto.has(idHistorial)
 
               return (
-                <div
-                  key={item.registro.id_registros_mensuales}
-                  className="grid grid-cols-[1fr_2fr_1fr_1fr_1fr_1fr_1fr] gap-3 px-4 py-3 items-center hover:bg-gray-50 transition-colors"
-                >
-                  <div className="text-sm font-medium text-gray-700 text-center">{mesLabel}</div>
+                <div key={idHistorial ?? `${h.id_contratos}-${h.anio}-${h.mes}`}>
+                  <div
+                    onClick={() => idHistorial != null && toggleDetalle(idHistorial)}
+                    className="grid grid-cols-[1fr_2fr_1.4fr_1fr_1fr_1fr_1fr] gap-3 px-4 py-3 items-center hover:bg-gray-50 transition-colors cursor-pointer"
+                    title="Clic para ver el detalle del aumento"
+                  >
+                    <div className="text-sm font-medium text-gray-700 text-center">{mesLabel}</div>
 
-                  <div className="min-w-0">
-                    <div className="font-semibold text-gray-800 text-sm truncate">{formatDepto(dep?.piso, dep?.codigo)}</div>
-                    <div className="text-xs text-gray-500 truncate mt-0.5">
-                      {item.inquilino?.nombre_apellido}
-                      {dep?.direccion && <span className="text-gray-400"> · {dep.direccion}</span>}
+                    <div className="min-w-0">
+                      <div className="font-semibold text-gray-800 text-sm truncate">{formatDepto(dep?.piso, dep?.codigo)}</div>
+                      <div className="text-xs text-gray-500 truncate mt-0.5">
+                        {item.inquilino?.nombre_apellido}
+                        {dep?.direccion && <span className="text-gray-400"> · {dep.direccion}</span>}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-center gap-1 flex-wrap">
+                      <TipoBadge tipo={h.tipo_aumento} />
+                      <EstadoAumentoBadge estado={h.estado} />
+                    </div>
+
+                    <div className="text-sm font-semibold text-gray-800 whitespace-nowrap">
+                      {h.porcentaje_alquiler_aplicado.toFixed(2)}%
+                    </div>
+
+                    <div className="text-sm font-mono text-gray-600 whitespace-nowrap">
+                      {formatMoneda(h.alquiler_anterior)}
+                    </div>
+
+                    <div className="text-sm font-mono font-semibold text-blue-700 whitespace-nowrap">
+                      {formatMoneda(h.alquiler_aplicado)}
+                    </div>
+
+                    <div className="text-sm font-mono whitespace-nowrap">
+                      <span className="text-green-600 font-semibold">+{formatMoneda(item.diferencia_aplicada)}</span>
                     </div>
                   </div>
 
-                  <div className="text-center"><TipoBadge tipo={item.contrato.tipo_aumento} /></div>
+                  {abierto && idHistorial != null && (
+                    <div className="px-4 pb-4">
+                      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm space-y-3">
+                        {/* Alquiler: propuesto vs aplicado */}
+                        <div>
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Alquiler</p>
+                          <div className="grid grid-cols-3 gap-3">
+                            <div>
+                              <p className="text-xs text-gray-400 mb-0.5">Propuesto</p>
+                              <p className="font-mono font-semibold text-gray-700">{formatMoneda(h.alquiler_propuesto)} ({h.porcentaje_alquiler_propuesto.toFixed(2)}%)</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-400 mb-0.5">Aplicado</p>
+                              <p className="font-mono font-semibold text-blue-700">{formatMoneda(h.alquiler_aplicado)} ({h.porcentaje_alquiler_aplicado.toFixed(2)}%)</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-400 mb-0.5">Anterior</p>
+                              <p className="font-mono font-semibold text-gray-700">{formatMoneda(h.alquiler_anterior)}</p>
+                            </div>
+                          </div>
+                          {h.alquiler_aplicado !== h.alquiler_propuesto && (
+                            <p className="text-xs text-amber-700 mt-1">El monto aplicado fue corregido manualmente respecto de la propuesta original.</p>
+                          )}
+                        </div>
 
-                  <div className="text-sm font-semibold text-gray-800 whitespace-nowrap">
-                    {item.registro.porcentaje_aumento_usado != null ? `${item.registro.porcentaje_aumento_usado.toFixed(2)}%` : '-'}
-                  </div>
+                        {/* Expensa */}
+                        {h.expensa_anterior != null && (
+                          <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Expensa</p>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <p className="text-xs text-gray-400 mb-0.5">Propuesta</p>
+                                <p className="font-mono font-semibold text-gray-700">
+                                  {formatMoneda(h.expensa_propuesta)} ({h.porcentaje_expensa_propuesto != null ? `${h.porcentaje_expensa_propuesto.toFixed(2)}%` : '-'})
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-400 mb-0.5">Aplicada</p>
+                                <p className="font-mono font-semibold text-blue-700">
+                                  {formatMoneda(h.expensa_aplicada)} ({h.porcentaje_expensa_aplicado != null ? `${h.porcentaje_expensa_aplicado.toFixed(2)}%` : '-'})
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-400 mb-0.5">Anterior</p>
+                                <p className="font-mono font-semibold text-gray-700">{formatMoneda(h.expensa_anterior)}</p>
+                              </div>
+                            </div>
+                            {item.diferencia_expensa_aplicada != null && (
+                              <p className="text-xs text-green-600 font-semibold mt-1">+{formatMoneda(item.diferencia_expensa_aplicada)}</p>
+                            )}
+                          </div>
+                        )}
 
-                  <div className="text-sm font-mono text-gray-600 whitespace-nowrap">
-                    {item.alquiler_anterior != null ? formatMoneda(item.alquiler_anterior) : <span className="text-gray-300 italic">N/D</span>}
-                  </div>
+                        {/* Datos ICL */}
+                        {h.coeficiente_icl != null && (
+                          <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Datos ICL (BCRA)</p>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <p className="text-xs text-gray-400 mb-0.5">Coeficiente</p>
+                                <p className="font-mono font-semibold text-gray-700">{h.coeficiente_icl.toFixed(6)}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-400 mb-0.5">ICL inicial / final</p>
+                                <p className="font-mono font-semibold text-gray-700">{h.icl_inicial} → {h.icl_final}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-400 mb-0.5">Período consultado</p>
+                                <p className="text-gray-700">{formatFecha(h.fecha_icl_inicial)} → {formatFecha(h.fecha_icl_final)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
-                  <div className="text-sm font-mono font-semibold text-blue-700 whitespace-nowrap">{formatMoneda(item.alquiler_nuevo)}</div>
-
-                  <div className="text-sm font-mono whitespace-nowrap">
-                    {diferencia != null ? <span className="text-green-600 font-semibold">+{formatMoneda(diferencia)}</span> : <span className="text-gray-300">-</span>}
-                  </div>
+                        {/* Auditoría */}
+                        <div className="text-xs text-gray-500 border-t border-gray-200 pt-2">
+                          Estado: <span className="font-semibold">{h.estado}</span>
+                          {h.estado === 'CONSOLIDADO' && h.fecha_consolidacion && (
+                            <> · Consolidado al cobrar: <span className="font-semibold">{new Date(h.fecha_consolidacion).toLocaleString('es-AR', { hour12: false })}</span></>
+                          )}
+                          {' '}· Generado: {new Date(h.fecha_creacion).toLocaleString('es-AR', { hour12: false })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -380,7 +507,7 @@ type Tab = 'proximos' | 'historial'
 export default function Aumentos() {
   const [tab, setTab] = useState<Tab>('proximos')
   const [items, setItems] = useState<AumentoItem[]>([])
-  const [historial, setHistorial] = useState<AumentoHistorialItem[]>([])
+  const [historial, setHistorial] = useState<HistorialAumentoItem[]>([])
   const [inquilinos, setInquilinos] = useState<Inquilino[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingHistorial, setLoadingHistorial] = useState(false)

@@ -1,6 +1,7 @@
 from typing import Optional
+from datetime import date, datetime
 from sqlmodel import SQLModel, Field
-from datetime import date
+from sqlalchemy import UniqueConstraint, CheckConstraint
 
 
 class Departamento(SQLModel, table=True):
@@ -170,6 +171,87 @@ class RegistroMensual(SQLModel, table=True):
     total: int
     porcentaje_aumento_usado: Optional[float] = Field(
         default=None, nullable=True)
+
+
+class HistorialAumento(SQLModel, table=True):
+    """Fuente de verdad del historial de aumentos.
+
+    Estado del evento de aumento:
+      - PENDIENTE: generado por el sistema, el mes todavía no fue cobrado.
+      - CONSOLIDADO: el mes fue cobrado; el aumento queda inmutable.
+
+    Semántica de montos:
+      - *_anterior: monto vigente antes del aumento.
+      - *_propuesto: monto calculado originalmente por el sistema (congelado).
+      - *_aplicado: monto final a cobrar; en esta etapa siempre == propuesto.
+    """
+    __tablename__ = "historial_aumentos"
+    __table_args__ = (
+        UniqueConstraint(
+            "id_contratos", "anio", "mes",
+            name="uq_historial_contrato_periodo"),
+        CheckConstraint("mes >= 1 AND mes <= 12", name="ck_historial_mes_rango"),
+    )
+
+    id_historial_aumentos: Optional[int] = Field(default=None, primary_key=True)
+    id_contratos: int = Field(foreign_key="contratos.id_contratos")
+    anio: int
+    mes: int
+    estado: str = Field(default="PENDIENTE", max_length=20)
+    tipo_aumento: str = Field(max_length=20)
+
+    # Alquiler
+    alquiler_anterior: int
+    alquiler_propuesto: int
+    alquiler_aplicado: int
+    porcentaje_alquiler_propuesto: float
+    porcentaje_alquiler_aplicado: float
+
+    # Expensa (NULL cuando el contrato no cobra expensa)
+    expensa_anterior: Optional[int] = None
+    expensa_propuesta: Optional[int] = None
+    expensa_aplicada: Optional[int] = None
+    porcentaje_expensa_propuesto: Optional[float] = None
+    porcentaje_expensa_aplicado: Optional[float] = None
+
+    # Datos ICL (NULL cuando el aumento es MANUAL)
+    coeficiente_icl: Optional[float] = None
+    icl_inicial: Optional[float] = None
+    icl_final: Optional[float] = None
+    fecha_icl_inicial: Optional[date] = None
+    fecha_icl_final: Optional[date] = None
+
+    # Auditoría
+    fecha_creacion: datetime = Field(default_factory=datetime.now)
+    fecha_actualizacion: datetime = Field(default_factory=datetime.now)
+    fecha_consolidacion: Optional[datetime] = None
+
+
+class HistorialAumentoRead(SQLModel):
+    id_historial_aumentos: Optional[int] = None
+    id_contratos: int
+    anio: int
+    mes: int
+    estado: str
+    tipo_aumento: str
+    alquiler_anterior: int
+    alquiler_propuesto: int
+    alquiler_aplicado: int
+    porcentaje_alquiler_propuesto: float
+    porcentaje_alquiler_aplicado: float
+    expensa_anterior: Optional[int] = None
+    expensa_propuesta: Optional[int] = None
+    expensa_aplicada: Optional[int] = None
+    porcentaje_expensa_propuesto: Optional[float] = None
+    porcentaje_expensa_aplicado: Optional[float] = None
+    coeficiente_icl: Optional[float] = None
+    icl_inicial: Optional[float] = None
+    icl_final: Optional[float] = None
+    fecha_icl_inicial: Optional[date] = None
+    fecha_icl_final: Optional[date] = None
+    fecha_creacion: datetime
+    fecha_actualizacion: datetime
+    fecha_consolidacion: Optional[datetime] = None
 
 
 class RegistroMensualCreate(SQLModel):

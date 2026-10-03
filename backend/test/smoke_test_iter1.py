@@ -137,13 +137,17 @@ for did in (id_dep2, id_dep):
 
 from sqlmodel import Session, select
 from app.db import engine
-from app.model.models import RegistroMensual, Contrato
+from app.model.models import RegistroMensual, Contrato, HistorialAumento
 with Session(engine) as s:
     ids_existentes = [c.id_contratos for c in s.exec(select(Contrato)).all()]
     orfanos = [r for r in s.exec(select(RegistroMensual)).all()
                if r.id_contratos not in ids_existentes]
     for r in orfanos:
         s.delete(r)
+    orfanos_h = [h for h in s.exec(select(HistorialAumento)).all()
+                 if h.id_contratos not in ids_existentes]
+    for h in orfanos_h:
+        s.delete(h)
     s.commit()
 print("Limpieza hecha.")
 

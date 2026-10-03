@@ -174,6 +174,8 @@ def _calcular_icl_aumento(
         "dias_faltantes": 0,
         "icl_inicial": icl_inicial,
         "icl_final": icl_final,
+        "fecha_icl_inicial": fecha_desde.isoformat(),
+        "fecha_icl_final": fecha_hasta.isoformat(),
         "icl_coeficiente": round(coeficiente, 6),
         "porcentaje": porcentaje,
         "alquiler_nuevo": alquiler_nuevo,
@@ -273,6 +275,8 @@ def calcular_estado_servicios(contrato: Contrato, registro: RegistroMensual) -> 
 
 def corresponde_aumento(contrato: Contrato, anio: int, mes: int) -> bool:
     """Determina si le corresponde un aumento en el mes/año dado."""
+    if getattr(contrato, 'tipo_aumento', 'MANUAL') == 'SIN_AUMENTO':
+        return False
     if contrato.periodicidad_aumento_meses == 0:
         return False
     # Para ICL: siempre verificar por periodicidad (no depende de porcentaje_aumento)
@@ -303,15 +307,54 @@ def corresponde_aumento(contrato: Contrato, anio: int, mes: int) -> bool:
 
 def aplicar_aumento_si_corresponde(session: Session, contrato: Contrato, anio: int, mes: int) -> Optional[float]:
     """
-    Aplica el aumento al contrato si corresponde.
-    Retorna el porcentaje efectivamente aplicado, o None si no se aplicó ningún aumento.
+    Aplica el aumento al contrato si corresponde y registra el evento en
+    historial_aumentos con estado PENDIENTE (se consolida al cobrar el mes).
+
+    Protecciones:
+      - tipo_aumento == SIN_AUMENTO: nunca aplica ni registra nada.
+      - Si el período (anio, mes) es posterior al mes de fecha_fin: no aplica.
+        (Si cae en el mismo mes de vencimiento, sí puede aplicarse.)
+      - Idempotencia: si ya existe historial para (contrato, anio, mes), no
+        re-aplica ni modifica la propuesta congelada.
+      - ICL pendiente (datos BCRA incompletos): no muta nada, no registra nada.
+
+    Consistencia: historial + mutación del contrato se commitean juntos.
+    Retorna el porcentaje aplicado (para el legacy porcentaje_aumento_usado),
+    o None si no se aplicó ningún aumento.
     """
+    from app.crud import historial_aumentos as crud_historial
+    from app.model.models import HistorialAumento
+
+    tipo = getattr(contrato, 'tipo_aumento', 'MANUAL')
+
+    if tipo == 'SIN_AUMENTO':
+        return None
+
     if not corresponde_aumento(contrato, anio, mes):
         return None
 
-    tipo = getattr(contrato, 'tipo_aumento', 'MANUAL')
-    porcentaje_usado: Optional[float] = None
+    # Protección por vencimiento: un aumento cuyo período de vigencia cae en
+    # un mes posterior al mes de fecha_fin no se aplica nunca.
+    fin = contrato.fecha_fin
+    if (anio, mes) > (fin.year, fin.month):
+        return None
 
+    # Idempotencia: el evento ya fue generado para este contrato/período;
+    # la propuesta congelada no se recalcula ni se duplica.
+    if crud_historial.get_by_contrato_periodo(
+            session, contrato.id_contratos, anio, mes) is not None:
+        return None
+
+    # Capturar los montos vigentes ANTES de mutar el contrato
+    alquiler_anterior = contrato.alquiler_base_actual
+    expensa_anterior = (
+        contrato.expensa_base_actual
+        if contrato.cobra_expensa and contrato.expensa_base_actual is not None
+        else None
+    )
+
+    icl_info: Optional[Dict[str, Any]] = None
+    porcentaje_usado: Optional[float] = None
     if tipo == 'ICL':
         # Determinar base del período ICL
         if contrato.fecha_ultimo_aumento is not None:
@@ -335,23 +378,67 @@ def aplicar_aumento_si_corresponde(session: Session, contrato: Contrato, anio: i
         factor = 1 + (contrato.porcentaje_aumento / 100)
         porcentaje_usado = contrato.porcentaje_aumento
 
-    contrato.alquiler_base_actual = round(
-        contrato.alquiler_base_actual * factor)
-    if contrato.cobra_expensa and contrato.expensa_base_actual is not None:
-        contrato.expensa_base_actual = round(
-            contrato.expensa_base_actual * factor)
+    # Propuesta (a partir de acá, congelada para siempre en el historial)
+    alquiler_propuesto = round(alquiler_anterior * factor)
+    expensa_propuesta = (
+        round(expensa_anterior * factor) if expensa_anterior is not None
+        else None
+    )
+    porcentaje_propuesto = (factor - 1) * 100
+
+    # Validaciones de negocio: un aumento nunca deja montos por debajo del
+    # valor anterior (bloquea, por ejemplo, variaciones ICL negativas).
+    if alquiler_propuesto < alquiler_anterior:
+        return None
+    if expensa_propuesta is not None and expensa_anterior is not None \
+            and expensa_propuesta < expensa_anterior:
+        return None
+
+    historial = HistorialAumento(
+        id_contratos=contrato.id_contratos,
+        anio=anio,
+        mes=mes,
+        estado="PENDIENTE",
+        tipo_aumento=tipo,
+        alquiler_anterior=alquiler_anterior,
+        alquiler_propuesto=alquiler_propuesto,
+        alquiler_aplicado=alquiler_propuesto,
+        porcentaje_alquiler_propuesto=porcentaje_propuesto,
+        porcentaje_alquiler_aplicado=porcentaje_propuesto,
+        expensa_anterior=expensa_anterior,
+        expensa_propuesta=expensa_propuesta,
+        expensa_aplicada=expensa_propuesta,
+        porcentaje_expensa_propuesto=(
+            porcentaje_propuesto if expensa_propuesta is not None else None),
+        porcentaje_expensa_aplicado=(
+            porcentaje_propuesto if expensa_propuesta is not None else None),
+        coeficiente_icl=(
+            icl_info["icl_coeficiente"] if icl_info else None),
+        icl_inicial=(icl_info["icl_inicial"] if icl_info else None),
+        icl_final=(icl_info["icl_final"] if icl_info else None),
+        fecha_icl_inicial=(
+            date.fromisoformat(icl_info["fecha_icl_inicial"]) if icl_info else None),
+        fecha_icl_final=(
+            date.fromisoformat(icl_info["fecha_icl_final"]) if icl_info else None),
+    )
+
+    # Mutación del contrato + historial en un único commit
+    contrato.alquiler_base_actual = alquiler_propuesto
+    if expensa_propuesta is not None:
+        contrato.expensa_base_actual = expensa_propuesta
     contrato.ultimo_aumento_anio = anio
     contrato.ultimo_aumento_mes = mes
     # Actualizar tambien la fecha de ultimo aumento: queda como base del
     # proximo periodo y evita que el mismo aumento se vuelva a aplicar
     # cada vez que se abre el Dashboard en el mes de vigencia.
     contrato.fecha_ultimo_aumento = date(anio, mes, 1)
+    session.add(historial)
     session.add(contrato)
     session.commit()
     session.refresh(contrato)
 
-    # Nota: el porcentaje_aumento_usado se guarda en el registro mensual
-    # DESPUÉS de que este se crea (en el caller, ej. dashboard).
+    # Nota: el porcentaje_aumento_usado (legacy) se guarda en el registro
+    # mensual DESPUÉS de que este se crea (en el caller, ej. dashboard).
     return porcentaje_usado
 
 
@@ -364,6 +451,15 @@ def calcular_proximo_aumento(contrato: Contrato) -> Dict[str, Any]:
     correspondiente (calculado o pendiente de datos).
     """
     tipo = getattr(contrato, 'tipo_aumento', 'MANUAL')
+
+    if tipo == 'SIN_AUMENTO':
+        return {
+            "proximo_anio": None, "proximo_mes": None,
+            "alquiler_actual": contrato.alquiler_base_actual, "alquiler_nuevo": None,
+            "requires_fecha_ultimo": False,
+            "tipo_aumento": tipo,
+            "aumento_fuera_de_contrato": False,
+        }
 
     if contrato.periodicidad_aumento_meses == 0:
         return {

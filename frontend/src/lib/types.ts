@@ -45,7 +45,7 @@ export interface Contrato {
   cobra_agua: boolean
   cobra_luz: boolean
   impuesto_fijo?: number
-  tipo_aumento: 'MANUAL' | 'ICL'
+  tipo_aumento: 'MANUAL' | 'ICL' | 'SIN_AUMENTO'
   archivo_nombre?: string
 }
 
@@ -64,7 +64,7 @@ export interface ContratoCreate {
   cobra_agua?: boolean
   cobra_luz?: boolean
   impuesto_fijo?: number
-  tipo_aumento?: 'MANUAL' | 'ICL'
+  tipo_aumento?: 'MANUAL' | 'ICL' | 'SIN_AUMENTO'
   fecha_ultimo_aumento?: string
 }
 
@@ -140,13 +140,40 @@ export interface AumentoItem {
   alerta?: string
 }
 
-export interface AumentoHistorialItem {
-  registro: RegistroMensual
+export interface HistorialAumentoDetalle {
+  id_historial_aumentos?: number
+  id_contratos: number
+  anio: number
+  mes: number
+  estado: 'PENDIENTE' | 'CONSOLIDADO'
+  tipo_aumento: 'MANUAL' | 'ICL' | 'SIN_AUMENTO'
+  alquiler_anterior: number
+  alquiler_propuesto: number
+  alquiler_aplicado: number
+  porcentaje_alquiler_propuesto: number
+  porcentaje_alquiler_aplicado: number
+  expensa_anterior?: number
+  expensa_propuesta?: number
+  expensa_aplicada?: number
+  porcentaje_expensa_propuesto?: number
+  porcentaje_expensa_aplicado?: number
+  coeficiente_icl?: number
+  icl_inicial?: number
+  icl_final?: number
+  fecha_icl_inicial?: string
+  fecha_icl_final?: string
+  fecha_creacion: string
+  fecha_actualizacion: string
+  fecha_consolidacion?: string
+}
+
+export interface HistorialAumentoItem {
+  historial: HistorialAumentoDetalle
   contrato: Contrato
-  departamento: Departamento
-  inquilino: Inquilino
-  alquiler_anterior: number | null
-  alquiler_nuevo: number
+  departamento?: Departamento
+  inquilino?: Inquilino
+  diferencia_aplicada: number
+  diferencia_expensa_aplicada?: number
 }
 
 export const PISOS = ['Planta baja', 'Piso 1', 'Piso 2', 'Piso 3']

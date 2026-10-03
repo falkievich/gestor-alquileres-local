@@ -205,13 +205,23 @@ contrato que vence el 1° o el 31 de octubre "vence en octubre" de la misma form
 - Los **aumentos** se aplican automáticamente cuando se abre el Dashboard en el **mes de
   vigencia** del próximo aumento (último aumento + periodicidad). El nuevo valor entra
   en el registro de ese mes y los siguientes; el mes anterior queda con el valor viejo.
-  Cada aumento aplicado queda registrado con el porcentaje usado (`porcentaje_aumento_usado`)
-  y se muestra en el historial de la sección Aumentos.
+- Cada aumento queda registrado en la tabla **`historial_aumentos`** (fuente de verdad del
+  historial) con estado **PENDIENTE**; al cobrar el mes pasa a **CONSOLIDADO** (inmutable).
+  Cada evento guarda montos y porcentajes de Alquiler y Expensa por separado (propuesto vs.
+  aplicado) y la auditoría ICL completa cuando corresponde. `porcentaje_aumento_usado`
+  queda temporalmente como campo legacy de compatibilidad.
+- Una **propuesta ya generada no cambia** si después se edita la configuración del contrato
+  (ej. 10% → 15%): el nuevo porcentaje se usa recién para el próximo aumento aún no generado.
+- Los tipos de aumento son **MANUAL**, **ICL** y **SIN_AUMENTO** (contrato que nunca
+  recibe aumentos automáticos).
 - Para los contratos cargados como **"ya en curso"**, la base temporal del próximo aumento
   es la **fecha del último aumento** indicada por el usuario (y, después de cada aumento
   aplicado, el sistema actualiza esa fecha a la del nuevo aumento).
 - Un **aumento no se aplica** si el contrato finaliza antes de que llegue el mes de
-  vigencia: la sección Aumentos lo marca con la tarjeta en rojo ("sin más aumentos").
+  vigencia (protección real en backend): la sección Aumentos lo marca con la tarjeta en
+  rojo ("sin más aumentos"). Si cae en el mismo mes de vencimiento, sí puede aplicarse.
+- Un **cobro es definitivo**: al marcar como pagado consolida el aumento pendiente y
+  no existe la función de desmarcar.
 
 ---
 

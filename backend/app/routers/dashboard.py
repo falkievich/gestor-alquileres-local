@@ -133,16 +133,16 @@ def marcar_pagado(id_registro: int, session: Session = Depends(get_session)):
         raise HTTPException(
             status_code=400, detail="No se puede marcar pagado: servicios pendientes")
     from app.crud.registros import RegistroMensualUpdate
-    return crud_registros.update_registro(session, id_registro, RegistroMensualUpdate(pagado=True))
+    actualizado = crud_registros.update_registro(
+        session, id_registro, RegistroMensualUpdate(pagado=True))
 
+    # Consolidar el aumento PENDIENTE de este contrato/período, si existe:
+    # a partir de aquí el aumento queda inmutable como histórico.
+    from app.crud import historial_aumentos as crud_historial
+    crud_historial.consolidar_pendiente(
+        session, registro.id_contratos, registro.anio, registro.mes)
 
-@router.post("/registros/{id_registro}/desmarcar-pagado")
-def desmarcar_pagado(id_registro: int, session: Session = Depends(get_session)):
-    registro = session.get(RegistroMensual, id_registro)
-    if not registro:
-        raise HTTPException(status_code=404, detail="Registro no encontrado")
-    from app.crud.registros import RegistroMensualUpdate
-    return crud_registros.update_registro(session, id_registro, RegistroMensualUpdate(pagado=False))
+    return actualizado
 
 
 @router.post("/registros/{id_registro}/override")

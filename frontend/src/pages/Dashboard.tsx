@@ -96,12 +96,6 @@ export default function Dashboard() {
     }
   }
 
-  async function desmarcarPagado(id: number) {
-    await api.post(`/dashboard/registros/${id}/desmarcar-pagado`)
-    toast('Se desmarcó el cobro correctamente')
-    cargar()
-  }
-
   async function crearBackup() {
     try {
       const res = await api.post('/backup/')
@@ -524,14 +518,6 @@ export default function Dashboard() {
                             className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition"
                           >
                             Cobrado
-                          </button>
-                        )}
-                        {reg.pagado && (
-                          <button
-                            onClick={() => desmarcarPagado(reg.id_registros_mensuales)}
-                            className="text-xs px-2 py-1 bg-gray-400 text-white rounded hover:bg-gray-500 transition"
-                          >
-                            Desmarcar
                           </button>
                         )}
                         <button

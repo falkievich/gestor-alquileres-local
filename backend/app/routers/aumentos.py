@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends
-from sqlmodel import Session, select
+from sqlmodel import Session
 from typing import Optional
 from app.db import get_session
 from app.crud import contratos as crud_contratos
-from app.crud import registros as crud_registros
-from app.model.models import ContratoRead, Departamento, Inquilino, RegistroMensual, Contrato
+from app.crud import historial_aumentos as crud_historial
+from app.model.models import (
+    Contrato, ContratoRead, Departamento, Inquilino, HistorialAumentoRead,
+)
 from app.service.mes_service import calcular_proximo_aumento, get_mes_actual
 from datetime import date
 
@@ -51,63 +53,39 @@ def historial_aumentos(
     session: Session = Depends(get_session),
 ):
     """
-    Lista todos los registros donde se aplicó un aumento real
-    (porcentaje_aumento_usado IS NOT NULL).
-    Soporta filtros opcionales por inquilino, año y mes.
+    Historial de aumentos leído directamente de la tabla `historial_aumentos`
+    (fuente de verdad). Cada fila es un evento de aumento real con su estado
+    (PENDIENTE / CONSOLIDADO), montos propuestos/aplicados y datos ICL.
     """
-    query = select(RegistroMensual).where(
-        RegistroMensual.porcentaje_aumento_usado.is_not(None)  # type: ignore
-    )
-    if anio:
-        query = query.where(RegistroMensual.anio == anio)
-    if mes:
-        query = query.where(RegistroMensual.mes == mes)
-    registros = session.exec(query).all()
-
+    historiales = crud_historial.listar(session)
+    hoy = date.today()
     resultado = []
-    for reg in registros:
-        contrato = session.get(Contrato, reg.id_contratos)
+
+    for h in historiales:
+        if anio and h.anio != anio:
+            continue
+        if mes and h.mes != mes:
+            continue
+        contrato = session.get(Contrato, h.id_contratos)
         if not contrato:
             continue
-        # Filtrar por inquilino si se indicó
         if id_inquilinos and contrato.id_inquilinos != id_inquilinos:
             continue
         dep = session.get(Departamento, contrato.id_departamentos)
         inq = session.get(Inquilino, contrato.id_inquilinos)
 
-        # Buscar el registro del mes inmediatamente anterior del mismo contrato
-        prev_mes = reg.mes - 1
-        prev_anio = reg.anio
-        if prev_mes == 0:
-            prev_mes = 12
-            prev_anio -= 1
-        prev_reg = crud_registros.get_registro(
-            session, reg.id_contratos, prev_anio, prev_mes)
-
-        alquiler_anterior = None
-        if prev_reg:
-            alquiler_anterior = (
-                prev_reg.alquiler_override
-                if prev_reg.alquiler_override is not None
-                else prev_reg.alquiler_calculado
-            )
-
-        alquiler_nuevo = (
-            reg.alquiler_override
-            if reg.alquiler_override is not None
-            else reg.alquiler_calculado
-        )
-
         resultado.append({
-            "registro": reg,
+            "historial": HistorialAumentoRead.model_validate(h),
             "contrato": ContratoRead.model_validate(contrato),
             "departamento": dep,
             "inquilino": inq,
-            "alquiler_anterior": alquiler_anterior,
-            "alquiler_nuevo": alquiler_nuevo,
+            "diferencia_aplicada": h.alquiler_aplicado - h.alquiler_anterior,
+            "diferencia_expensa_aplicada": (
+                h.expensa_aplicada - h.expensa_anterior
+                if h.expensa_aplicada is not None and h.expensa_anterior is not None
+                else None
+            ),
+            "hoy": hoy.isoformat(),
         })
 
-    # Más reciente primero
-    resultado.sort(key=lambda x: (
-        x["registro"].anio, x["registro"].mes), reverse=True)
     return resultado

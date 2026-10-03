@@ -64,7 +64,7 @@ No requiere ningún servidor de base de datos. El archivo SQLite es portátil y 
 - Soportar contratos que ya estaban activos antes de usar el sistema (campo "último aumento")
 - Calcular automáticamente el alquiler mensual por contrato
 - Registrar cobros mensuales por inquilino (alquiler + expensas + agua + luz)
-- Marcar cobros como pagados y desmarcarlos
+- Marcar cobros como pagados (un pago es definitivo: consolida el aumento pendiente y no se puede revertir)
 - Aplicar ajustes individuales o masivos al monto de un mes
 - Registrar y cargar valores de agua y luz por departamento
 - Calcular y mostrar el próximo aumento de cada contrato activo
@@ -122,7 +122,6 @@ detalle de lo que debe abonar ese mes.
 **Acciones por fila:**
 
 - **Marcar como pagado:** registra el pago del mes para ese inquilino (pide confirmación)
-- **Desmarcar pagado:** revierte el pago si fue marcado por error
 - **Ajuste individual (ícono de sliders):** abre el modal de override para modificar montos de ese mes
 
 ---
@@ -296,8 +295,8 @@ Incluye filtros por inquilino, departamento y estado.
 - **Impuesto ($):** campo opcional. Monto fijo mensual, NO participa de los aumentos.
 - **Expensas base ($):** campo opcional, se habilita con el toggle "Cobra expensas"
 - **Cobra expensas / agua / luz:** toggles para indicar qué servicios incluye el contrato
-- **Porcentaje de aumento (%):** obligatorio cuando el tipo de aumento es MANUAL
-- **Periodicidad (meses):** cuántos meses entre cada aumento (ej: 3, 6, 12)
+- **Porcentaje de aumento (%):** obligatorio cuando el tipo de aumento es MANUAL (no se pide con ICL ni SIN_AUMENTO)
+- **Periodicidad (meses):** cuántos meses entre cada aumento (ej: 3, 6, 12); no se pide con SIN_AUMENTO
 - **¿Contrato ya en curso?:** checkbox. Si se activa, aparecen los campos obligatorios:
   - **Alquiler inicial del contrato:** monto con el que comenzó (histórico, no se usa para calcular aumentos)
   - **Alquiler actual (último cobro):** monto que se cobra actualmente; es la base de los próximos aumentos
@@ -431,3 +430,64 @@ El cálculo no puede realizarse. El sistema muestra el estado **"ICL pendiente d
 informa la última fecha disponible publicada por el BCRA y estima cuántos días faltan para
 que el período esté completo. No se muestran montos ni porcentajes estimados hasta tanto
 el dato esté disponible.
+
+---
+
+## Sistema de aumentos — Estados e historial (Punto 1)
+
+---
+
+### Tipos de aumento
+
+- **MANUAL:** aumento por porcentaje fijo (porcentaje_aumento) cada periodicidad_aumento_meses.
+- **ICL:** aumento calculado con el índice del BCRA (ver regla más arriba).
+- **SIN_AUMENTO:** el contrato no recibe aumentos automáticos. No se calcula próximo aumento,
+  no se aplica ninguno y no se genera historial. 	ipo_aumento es la fuente de verdad;
+  el porcentaje y la periodicidad no intervienen en ninguna decisión.
+
+---
+
+### Ciclo de vida de un aumento: PENDIENTE → CONSOLIDADO
+
+- Cuando corresponde un aumento (y el contrato sigue vigente), el sistema calcula la propuesta,
+  crea una fila en historial_aumentos con estado **PENDIENTE** y aplica el aumento al contrato.
+- Mientras está PENDIENTE, el monto queda preparado para futuras correcciones manuales (Punto 2).
+- Cuando el usuario marca el mes como **cobrado** desde el Dashboard, el aumento PENDIENTE de ese
+  contrato/período pasa automáticamente a **CONSOLIDADO** y queda inmutable (historia).
+- Un pago es definitivo: no existe "desmarcar pagado".
+- Si el mes no tenía aumento, cobrar no consolida nada (no hay error).
+
+---
+
+### Propuesta vs. aplicado
+
+- **Propuesto:** monto y porcentaje calculados originalmente por el sistema; quedan congelados.
+- **Aplicado:** monto y porcentaje que efectivamente corresponden cobrar. En esta etapa
+  aplicado == propuesto; en la próxima iteración el usuario podrá corregir el aplicado
+  (y los porcentajes de Alquiler y Expensa quedan almacenados de manera independiente).
+- **Una propuesta ya generada NO cambia** si luego se edita la configuración del contrato
+  (ej. 10% → 15%): el nuevo porcentaje se usará recién para el próximo aumento que aún
+  no haya sido generado. Esta regla está protegida en backend, no solo en la UI.
+
+---
+
+### Historial de aumentos (historial_aumentos)
+
+- Tabla nueva, fuente de verdad del historial. PK: id_historial_aumentos.
+- UNIQUE (id_contratos, anio, mes): no pueden existir dos aumentos para el mismo contrato y período.
+- Guarda montos y porcentajes de Alquiler y Expensa por separado, y la auditoría ICL completa
+  (coeficiente, ICL inicial/final y fechas del período consultado al BCRA).
+- La vista "Historial de aumentos" lee directamente de esta tabla: muestra el detalle
+  (propuesto vs. aplicado, expensa, ICL) expandiendo la fila.
+- El historial antiguo (reconstruido desde egistros_mensuales) **NO se migra**:
+  la tabla empieza a funcionar desde esta implementación.
+- porcentaje_aumento_usado (en registros mensuales) queda temporalmente como campo legacy
+  de compatibilidad; ya no es la fuente de verdad del historial.
+
+---
+
+### Regla de vencimiento (fecha_fin)
+
+Si el mes en que correspondería el aumento es **posterior al mes de echa_fin**, el aumento
+no se aplica: no se modifica el contrato ni se crea historial. Si el aumento cae en el mismo
+mes de vencimiento, sí puede aplicarse. La protección existe en backend, no solo visualmente.
