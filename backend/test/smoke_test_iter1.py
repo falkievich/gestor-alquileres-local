@@ -86,22 +86,27 @@ alq_antes = reg_antes["registro"]["alquiler_calculado"]
 # El dashboard puede aplicar el aumento automaticamente (650000 * 1.1 = 715000)
 check("registro usa alquiler actual (con aumento auto)", alq_antes in (650000, 715000), f"={alq_antes}")
 
-# 6. Editar alquiler actual -> el registro no pagado del mes debe re-sincronizarse
+# 6. Editar alquiler actual -> el registro no pagado del mes debe re-sincronizarse.
+#    Si el mes ya tenia un aumento PENDIENTE, el monto editado pasa a ser la
+#    nueva base de ese aumento y se cobra base x factor congelado (10 %).
+hubo_aumento = alq_antes == 715000
+alq_esperado = 770000 if hubo_aumento else 700000
+exp_esperada = 104500 if hubo_aumento else 95000
 r = client.put(f"/contratos/{id_cto}", json={"alquiler_base_actual": 700000, "expensa_base_actual": 95000})
 check("editar contrato", r.status_code == 200)
 r = client.get("/dashboard/mes-actual")
 reg_despues = next((i for i in r.json() if i["contrato"]["id_contratos"] == id_cto), None)
-check("sync alquiler", reg_despues["registro"]["alquiler_calculado"] == 700000,
+check("sync alquiler", reg_despues["registro"]["alquiler_calculado"] == alq_esperado,
       f"antes={alq_antes} despues={reg_despues['registro']['alquiler_calculado']}")
-check("sync expensa", reg_despues["registro"]["expensa_calculada"] == 95000,
+check("sync expensa", reg_despues["registro"]["expensa_calculada"] == exp_esperada,
       f"={reg_despues['registro']['expensa_calculada']}")
-check("sync total", reg_despues["registro"]["total"] == 700000 + 95000,
+check("sync total", reg_despues["registro"]["total"] == alq_esperado + exp_esperada,
       f"={reg_despues['registro']['total']}")
 
 # 7b. Reabrir el dashboard NO debe aplicar el aumento de nuevo (no doble aumento)
 r = client.get("/dashboard/mes-actual")
 reg_reabrir = next((i for i in r.json() if i["contrato"]["id_contratos"] == id_cto), None)
-check("no doble aumento en dashboard", reg_reabrir["registro"]["alquiler_calculado"] == 700000,
+check("no doble aumento en dashboard", reg_reabrir["registro"]["alquiler_calculado"] == alq_esperado,
       f"={reg_reabrir['registro']['alquiler_calculado']}")
 
 # 7. Servicios pendientes (este contrato no cobra agua/luz, no debe aparecer)
@@ -119,11 +124,11 @@ if reg_imp:
 else:
     check("dashboard lista contrato normal", False)
 
-# 8. Aumentos: proximo aumento usa alquiler_base_actual (700000)
+# 8. Aumentos: proximo aumento usa alquiler_base_actual
 r = client.get("/aumentos/")
 item = next((i for i in r.json() if i["contrato"]["id_contratos"] == id_cto), None)
 if item:
-    check("aumento usa actual", item["proximo_aumento"]["alquiler_actual"] == 700000,
+    check("aumento usa actual", item["proximo_aumento"]["alquiler_actual"] == alq_esperado,
           f"={item['proximo_aumento']['alquiler_actual']}")
 else:
     check("aumento lista contrato", False)

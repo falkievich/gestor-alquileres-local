@@ -141,7 +141,7 @@ Fuente de verdad del historial de aumentos. PK:
 | `estado` | VARCHAR(20) | `PENDIENTE` (generado, sin cobrar) / `CONSOLIDADO` (cobrado, inmutable). Default PENDIENTE |
 | `tipo_aumento` | VARCHAR(20) | `MANUAL` / `ICL` / `SIN_AUMENTO` |
 | `alquiler_anterior` | INTEGER | alquiler vigente antes del aumento |
-| `alquiler_propuesto` | INTEGER | monto calculado por el sistema (congelado) |
+| `alquiler_propuesto` | INTEGER | monto calculado por el sistema (congelado; se re-calcula solo si estando PENDIENTE y en el mes en curso se corrige el monto del contrato) |
 | `alquiler_aplicado` | INTEGER | monto final efectivo a cobrar; arranca igual al propuesto pero **puede modificarse mientras esté PENDIENTE** |
 | `porcentaje_alquiler_propuesto` | FLOAT | % de la propuesta |
 | `porcentaje_alquiler_aplicado` | FLOAT | % efectivo del aplicado (lo recalcula el backend ante cada modificación) |
@@ -156,8 +156,15 @@ Fuente de verdad del historial de aumentos. PK:
 | `fecha_actualizacion` | DATETIME | última modificación |
 | `fecha_consolidacion` | DATETIME NULL | se fija al pasar a CONSOLIDADO (al cobrar el mes) |
 
-Regla operativa clave: `*_aplicado` puede diferir de `*_propuesto`
-(modificación de un PENDIENTE); al consolidarse queda inmutable.
+Reglas operativas clave:
+
+- `*_aplicado` puede diferir de `*_propuesto` (modificación de un PENDIENTE);
+  al consolidarse queda inmutable.
+- Mientras el aumento esté **PENDIENTE y su período sea el mes en curso**,
+  corregir el alquiler o la expensa del contrato re-basa el evento:
+  `*_anterior` toma el monto corregido y `*_propuesto` / `*_aplicado` se
+  recalculan con el porcentaje congelado. Los aumentos de meses anteriores y
+  los CONSOLIDADO no se tocan.
 
 ---
 

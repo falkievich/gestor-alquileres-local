@@ -23,6 +23,25 @@ interface HistorialPagoItem {
   total: number
 }
 
+type FilaCobro = Pick<DashboardItem, 'contrato' | 'registro'>
+
+/**
+ * Columnas monetarias opcionales que tienen al menos un valor cargado en el
+ * listado. Las que quedan en false se saltean al imprimir (`colPrint`).
+ */
+function columnasConDatos(filas: FilaCobro[]) {
+  return {
+    expensa: filas.some(f => f.contrato.cobra_expensa && (f.registro.expensa_override ?? f.registro.expensa_calculada) != null),
+    agua: filas.some(f => f.contrato.cobra_agua && f.registro.agua != null),
+    luz: filas.some(f => f.contrato.cobra_luz && f.registro.luz != null),
+    impuesto: filas.some(f => f.registro.impuesto != null),
+  }
+}
+
+function colPrint(conDatos: boolean) {
+  return conDatos ? '' : 'col-vacia-impresion'
+}
+
 export default function Dashboard() {
   const toast = useToast()
   const [items, setItems] = useState<DashboardItem[]>([])
@@ -186,6 +205,8 @@ export default function Dashboard() {
   // La selección masiva solo opera sobre registros del mes actual.
   const visiblesCobrables = actuales
   const visibles = filas
+  const colsCobros = columnasConDatos(visibles)
+  const colsHistorial = columnasConDatos(historial)
   const mesActual = actuales.length > 0
     ? `${MESES[actuales[0].mes - 1]} ${actuales[0].anio}`
     : ''
@@ -336,10 +357,10 @@ export default function Dashboard() {
                       <th className="text-left px-4 py-3 font-semibold text-gray-600">Depto</th>
                       <th className="text-left px-4 py-3 font-semibold text-gray-600">Inquilino</th>
                       <th className="text-left px-4 py-3 font-semibold text-gray-600">Alquiler</th>
-                      <th className="text-left px-4 py-3 font-semibold text-gray-600">Expensa</th>
-                      <th className="text-left px-4 py-3 font-semibold text-gray-600">Agua</th>
-                      <th className="text-left px-4 py-3 font-semibold text-gray-600">Luz</th>
-                      <th className="text-left px-4 py-3 font-semibold text-gray-600">Impuesto</th>
+                      <th className={`text-left px-4 py-3 font-semibold text-gray-600 ${colPrint(colsHistorial.expensa)}`}>Expensa</th>
+                      <th className={`text-left px-4 py-3 font-semibold text-gray-600 ${colPrint(colsHistorial.agua)}`}>Agua</th>
+                      <th className={`text-left px-4 py-3 font-semibold text-gray-600 ${colPrint(colsHistorial.luz)}`}>Luz</th>
+                      <th className={`text-left px-4 py-3 font-semibold text-gray-600 ${colPrint(colsHistorial.impuesto)}`}>Impuesto</th>
                       <th className="text-center px-4 py-3 font-semibold text-gray-600">Total</th>
                       <th className="text-center px-4 py-3 font-semibold text-gray-600 print:hidden">Acción</th>
                     </tr>
@@ -365,16 +386,16 @@ export default function Dashboard() {
                           </td>
                           <td className="px-4 py-3 text-gray-700">{h.inquilino?.nombre_apellido}</td>
                     <td className="px-4 py-3 text-left font-mono whitespace-nowrap">{formatMoneda(alq)}</td>
-                          <td className="px-4 py-3 text-left font-mono whitespace-nowrap">
+                          <td className={`px-4 py-3 text-left font-mono whitespace-nowrap ${colPrint(colsHistorial.expensa)}`}>
                             {h.contrato.cobra_expensa ? formatMoneda(exp) : <span className="text-gray-400">-</span>}
                           </td>
-                          <td className="px-4 py-3 text-left font-mono whitespace-nowrap">
+                          <td className={`px-4 py-3 text-left font-mono whitespace-nowrap ${colPrint(colsHistorial.agua)}`}>
                             {h.contrato.cobra_agua ? (reg.agua != null ? formatMoneda(reg.agua) : <span className="text-gray-400">-</span>) : <span className="text-gray-400">-</span>}
                           </td>
-                          <td className="px-4 py-3 text-left font-mono whitespace-nowrap">
+                          <td className={`px-4 py-3 text-left font-mono whitespace-nowrap ${colPrint(colsHistorial.luz)}`}>
                             {h.contrato.cobra_luz ? (reg.luz != null ? formatMoneda(reg.luz) : <span className="text-gray-400">-</span>) : <span className="text-gray-400">-</span>}
                           </td>
-                          <td className="px-4 py-3 text-left font-mono whitespace-nowrap">
+                          <td className={`px-4 py-3 text-left font-mono whitespace-nowrap ${colPrint(colsHistorial.impuesto)}`}>
                             {reg.impuesto != null ? formatMoneda(reg.impuesto) : <span className="text-gray-400">-</span>}
                           </td>
                           <td className="px-4 py-3 text-center font-bold font-mono text-green-700">{formatMoneda(h.total)}</td>
@@ -425,10 +446,10 @@ export default function Dashboard() {
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Depto</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Inquilino</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Alquiler</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Expensa</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Agua</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Luz</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Impuesto</th>
+                <th className={`text-left px-4 py-3 font-semibold text-gray-600 ${colPrint(colsCobros.expensa)}`}>Expensa</th>
+                <th className={`text-left px-4 py-3 font-semibold text-gray-600 ${colPrint(colsCobros.agua)}`}>Agua</th>
+                <th className={`text-left px-4 py-3 font-semibold text-gray-600 ${colPrint(colsCobros.luz)}`}>Luz</th>
+                <th className={`text-left px-4 py-3 font-semibold text-gray-600 ${colPrint(colsCobros.impuesto)}`}>Impuesto</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Total</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600 col-servicios-impresion">Servicios</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Pago</th>
@@ -488,14 +509,14 @@ export default function Dashboard() {
                     </td>
                     <td className="px-4 py-3 text-gray-700">{item.inquilino?.nombre_apellido}</td>
                     <td className="px-4 py-3 text-left font-mono whitespace-nowrap">{formatMoneda(alq)}</td>
-                    <td className="px-4 py-3 text-left font-mono whitespace-nowrap">{item.contrato.cobra_expensa ? formatMoneda(exp) : <span className="text-gray-400">-</span>}</td>
-                    <td className="px-4 py-3 text-left font-mono whitespace-nowrap">
+                    <td className={`px-4 py-3 text-left font-mono whitespace-nowrap ${colPrint(colsCobros.expensa)}`}>{item.contrato.cobra_expensa ? formatMoneda(exp) : <span className="text-gray-400">-</span>}</td>
+                    <td className={`px-4 py-3 text-left font-mono whitespace-nowrap ${colPrint(colsCobros.agua)}`}>
                       {item.contrato.cobra_agua ? (reg.agua != null ? formatMoneda(reg.agua) : <span className="text-orange-500">Pend.</span>) : <span className="text-gray-400">-</span>}
                     </td>
-                    <td className="px-4 py-3 text-left font-mono whitespace-nowrap">
+                    <td className={`px-4 py-3 text-left font-mono whitespace-nowrap ${colPrint(colsCobros.luz)}`}>
                       {item.contrato.cobra_luz ? (reg.luz != null ? formatMoneda(reg.luz) : <span className="text-orange-500">Pend.</span>) : <span className="text-gray-400">-</span>}
                     </td>
-                    <td className="px-4 py-3 text-left font-mono whitespace-nowrap">
+                    <td className={`px-4 py-3 text-left font-mono whitespace-nowrap ${colPrint(colsCobros.impuesto)}`}>
                       {reg.impuesto != null ? formatMoneda(reg.impuesto) : <span className="text-gray-400">-</span>}
                     </td>
                     <td className="px-4 py-3 text-center font-bold font-mono">{formatMoneda(item.total)}</td>

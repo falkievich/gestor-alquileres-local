@@ -146,6 +146,13 @@ if fila_serv_c1:
     check("servicios: guardar luz en atrasado", r2.status_code == 200)
     check("servicios: total recalculado congelado (110000+5000)",
           r2.json()["total"] == 115000, f"={r2.json().get('total')}")
+    # El atrasado ya cargado sigue listado (editable) hasta que se cobre
+    r3 = client.get("/servicios/pendientes")
+    fila_serv_ok = next((i for i in r3.json()
+                         if i["registro"]["id_registros_mensuales"] == id_reg_c1), None)
+    check("servicios: atrasado cargado sigue visible y editable",
+          fila_serv_ok is not None and fila_serv_ok["estado"] == "OK",
+          str(fila_serv_ok and fila_serv_ok["estado"]))
 
 # ── Override en atrasado ─────────────────────────────────────────────
 r = client.post(f"/dashboard/registros/{id_reg_c1}/override",

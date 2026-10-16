@@ -5,7 +5,9 @@ from app.model.models import (
     Departamento, Inquilino, RegistroMensual
 )
 from fastapi import HTTPException
-from app.service.mes_service import get_mes_actual, calcular_total
+from app.service.mes_service import (
+    get_mes_actual, rebasar_aumento_pendiente, total_efectivo_registro,
+)
 
 
 def get_contratos(session: Session) -> List[Contrato]:
@@ -58,11 +60,24 @@ def update_contrato(session: Session, id: int, data: ContratoUpdate) -> Optional
     if not contrato:
         return None
     update_data = data.model_dump(exclude_unset=True)
+    # Qué montos vigentes cambió realmente el usuario: si el contrato tiene un
+    # aumento PENDIENTE, el monto corregido es la nueva base de ese aumento.
+    alquiler_editado = (
+        "alquiler_base_actual" in update_data
+        and update_data["alquiler_base_actual"] != contrato.alquiler_base_actual
+    )
+    expensa_editada = (
+        "expensa_base_actual" in update_data
+        and update_data["expensa_base_actual"] != contrato.expensa_base_actual
+    )
     for key, val in update_data.items():
         setattr(contrato, key, val)
     session.add(contrato)
     session.commit()
     session.refresh(contrato)
+    if alquiler_editado or expensa_editada:
+        rebasar_aumento_pendiente(
+            session, contrato, alquiler_editado, expensa_editada)
     _sincronizar_registros_mensuales(session, contrato)
     return contrato
 
@@ -72,6 +87,10 @@ def _sincronizar_registros_mensuales(session: Session, contrato: Contrato) -> No
     Si se edita el alquiler/expensa actual de un contrato, propaga el cambio
     a los registros mensuales NO pagados y sin override del mes en curso en
     adelante. Los meses históricos pagados no se modifican.
+
+    Los conceptos que el contrato dejó de cobrar (expensa, agua, luz) se
+    limpian del registro para que el total no siga sumando montos que las
+    pantallas ya no muestran.
     """
     anio_actual, mes_actual = get_mes_actual()
     registros = session.exec(
@@ -92,22 +111,29 @@ def _sincronizar_registros_mensuales(session: Session, contrato: Contrato) -> No
                 registro.alquiler_calculado != contrato.alquiler_base_actual:
             registro.alquiler_calculado = contrato.alquiler_base_actual
             cambio = True
-        if registro.expensa_override is None and contrato.cobra_expensa:
-            nueva_expensa = contrato.expensa_base_actual
-            if registro.expensa_calculada != nueva_expensa:
-                registro.expensa_calculada = nueva_expensa
+        if contrato.cobra_expensa:
+            if registro.expensa_override is None and \
+                    registro.expensa_calculada != contrato.expensa_base_actual:
+                registro.expensa_calculada = contrato.expensa_base_actual
                 cambio = True
+        elif registro.expensa_calculada is not None or registro.expensa_override is not None:
+            # El contrato dejó de cobrar expensa: se limpia el concepto
+            # completo (incluido el ajuste manual, que ya no tiene sentido).
+            registro.expensa_calculada = None
+            registro.expensa_override = None
+            cambio = True
+        if not contrato.cobra_agua and registro.agua is not None:
+            registro.agua = None
+            cambio = True
+        if not contrato.cobra_luz and registro.luz is not None:
+            registro.luz = None
+            cambio = True
         nuevo_impuesto = contrato.impuesto_fijo
         if registro.impuesto != nuevo_impuesto:
             registro.impuesto = nuevo_impuesto
             cambio = True
         if cambio:
-            alq_efectivo = registro.alquiler_override if registro.alquiler_override is not None \
-                else registro.alquiler_calculado
-            exp_efectiva = registro.expensa_override if registro.expensa_override is not None \
-                else registro.expensa_calculada
-            registro.total = calcular_total(
-                alq_efectivo, exp_efectiva, registro.agua, registro.luz, registro.impuesto)
+            registro.total = total_efectivo_registro(registro)
             session.add(registro)
 
     session.commit()

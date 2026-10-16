@@ -24,13 +24,15 @@ export function Label({
   )
 }
 
+const CAMPO_DESHABILITADO = 'disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed'
+
 export function clasesCampo(
   errores: Record<string, string | undefined>,
   campo: string,
 ): string {
   return errores[campo]
-    ? 'w-full border border-red-600 ring-2 ring-red-300 rounded-lg px-3 py-2 text-sm'
-    : 'w-full border rounded-lg px-3 py-2 text-sm'
+    ? `w-full border border-red-600 ring-2 ring-red-300 rounded-lg px-3 py-2 text-sm ${CAMPO_DESHABILITADO}`
+    : `w-full border rounded-lg px-3 py-2 text-sm ${CAMPO_DESHABILITADO}`
 }
 
 export function ErrorCamposModal({

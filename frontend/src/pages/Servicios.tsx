@@ -30,7 +30,11 @@ export default function Servicios() {
   async function cargar() {
     setLoading(true)
     const res = await api.get('/servicios/pendientes')
-    setItems(res.data)
+    // Los atrasados van arriba del mes en curso (igual que el Dashboard).
+    setItems([
+      ...res.data.filter((i: ServicioRow) => i.atrasado),
+      ...res.data.filter((i: ServicioRow) => !i.atrasado),
+    ])
     // El encabezado siempre refleja el mes actual (no el primer atrasado).
     const actual = res.data.find((i: ServicioRow) => !i.atrasado)
     if (actual) {

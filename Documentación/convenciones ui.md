@@ -71,10 +71,22 @@ modales del sistema:
   obligatorios vacíos, se muestra el popup "Faltan campos obligatorios"
   listándolos, y los campos faltantes se muestran en rojo con borde y anillo
   intensos. El error de cada campo se limpia al editarlo.
-- Confirmaciones destructivas (cerrar contrato, eliminar departamento o
-  inquilino): confirmación nativa del navegador.
-- El modal de confirmación de cobro muestra el desglose completo del mes
-  (alquiler, expensa, agua, luz, impuesto, total destacado) antes de confirmar.
+- Confirmaciones destructivas (eliminar departamento o inquilino):
+  confirmación nativa del navegador.
+- **Modales de confirmación con resumen** (cobro y cierre de contrato): ícono
+  circular de color + título, caja gris (`bg-gray-50 rounded-lg`) con el
+  resumen en filas `etiqueta / valor` (importes en `font-mono`) y dos botones
+  `flex-1` al pie. El de cobro muestra el desglose del mes (alquiler, expensa,
+  agua, luz, impuesto, total destacado); el de cierre de contrato muestra los
+  datos del contrato más un aviso ámbar con las consecuencias del cierre.
+  En el cierre el botón de confirmar va en **verde** y el de cancelar en
+  **rojo**.
+- **Modal en solo lectura** (detalle de un contrato finalizado): reutiliza el
+  mismo formulario de edición con todos los campos `disabled`; el subtítulo
+  aclara que los datos no pueden modificarse, el adjunto se ofrece como botón
+  de descarga en lugar del selector de archivo y el pie deja solo el botón
+  "Cerrar". El estilo de campo deshabilitado lo aporta `clasesCampo`
+  (`disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed`).
 
 ---
 
@@ -142,6 +154,9 @@ consolidar):
 - En Aumentos, si el pendiente atrasado no puede modificarse (existe un
   aumento posterior), el botón "Modificar aumento" se deshabilita con
   opacidad reducida, tooltip explicativo y un texto junto al botón.
+- En Servicios los atrasados son **tan editables como el mes actual**: el
+  acento ámbar indica el período, no un estado de solo lectura. La fila
+  mantiene su estado (Pendiente/Cargado) y su acción (Guardar/Actualizar).
 
 ---
 
@@ -152,6 +167,10 @@ Reglas visuales globales de impresión (CSS `@media print` en `index.css`):
 - Se ocultan: barra lateral de navegación, botones y encabezados de acción
   (`print:hidden`), columna de checkboxes y de acciones, columna "Servicios"
   del dashboard (`.col-servicios-impresion`), overlays de modales y toasts.
+- **Columnas monetarias vacías:** las columnas Expensa, Agua, Luz e Impuesto
+  se ocultan al imprimir si ninguna fila del listado tiene un valor cargado.
+  El Dashboard calcula esas banderas con `columnasConDatos()` y marca el `th`
+  y los `td` de la columna con `.col-vacia-impresion`.
 - Fondo blanco, ancho completo del contenido, márgenes de página ajustados.
 - Las tablas anulan su ancho mínimo y usan el 100 % de la hoja, con
   separadores por inquilino y encabezado destacado.

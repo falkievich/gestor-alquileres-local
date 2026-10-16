@@ -6,7 +6,7 @@ from app.crud import registros as crud_registros
 from app.service.mes_service import (
     get_mes_actual,
     calcular_estado_servicios,
-    calcular_total,
+    total_efectivo_registro,
     preparar_registro_mes,
     contrato_vigente_para_mes,
 )
@@ -19,9 +19,11 @@ router = APIRouter(prefix="/servicios", tags=["servicios"])
 @router.get("/pendientes")
 def listar_pendientes(session: Session = Depends(get_session)):
     """
-    Lista contratos activos que cobren agua/luz en el mes actual:
-    incluye los pendientes de cargar y los ya cargados pero sin cobrar,
-    con un campo "estado" para diferenciarlos ("Pendiente" / "OK").
+    Lista contratos activos que cobren agua/luz, del mes actual y de los meses
+    atrasados sin cobrar: incluye los pendientes de cargar y los ya cargados,
+    con un campo "estado" para diferenciarlos ("Pendiente" / "OK") y
+    "atrasado" para marcar los de meses anteriores. Una fila sale del listado
+    recién cuando se cobra el mes.
     """
     anio, mes = get_mes_actual()
     contratos = crud_contratos.get_contratos_activos(session)
@@ -53,9 +55,9 @@ def listar_pendientes(session: Session = Depends(get_session)):
             "atrasado": False,
         })
 
-    # Servicios atrasados: registros de meses anteriores sin cobrar que
-    # todavía necesitan completar Agua/Luz. Solo lectura (ya existen);
-    # incluye contratos finalizados mientras el registro siga pendiente.
+    # Servicios atrasados: registros de meses anteriores sin cobrar. Igual que
+    # el mes actual, siguen listados aunque ya tengan Agua/Luz cargados (para
+    # poder corregir un monto mal cargado) y solo salen al cobrarse el mes.
     from sqlalchemy import or_
     from app.model.models import Departamento, Inquilino
     registros_atrasados = session.exec(
@@ -81,8 +83,6 @@ def listar_pendientes(session: Session = Depends(get_session)):
         if not contrato.cobra_agua and not contrato.cobra_luz:
             continue
         estado = calcular_estado_servicios(contrato, reg_atrasado)
-        if estado != "Pendiente":
-            continue
         dep = session.get(Departamento, contrato.id_departamentos)
         inq = session.get(Inquilino, contrato.id_inquilinos)
         resultado.append({
@@ -128,10 +128,7 @@ def guardar_servicios(
     if luz is not None:
         registro.luz = luz
 
-    alq_efectivo = registro.alquiler_override if registro.alquiler_override is not None else registro.alquiler_calculado
-    exp_efectiva = registro.expensa_override if registro.expensa_override is not None else registro.expensa_calculada
-    total_calculado = calcular_total(
-        alq_efectivo, exp_efectiva, registro.agua, registro.luz, registro.impuesto)
+    total_calculado = total_efectivo_registro(registro)
 
     update = RegistroMensualUpdate(
         agua=registro.agua,

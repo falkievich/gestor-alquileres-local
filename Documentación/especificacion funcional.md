@@ -144,9 +144,13 @@ Pantalla para cargar los valores de **agua y luz** por departamento.
 
 **Servicios atrasados:**
 
-- También se listan los registros de meses anteriores sin cobrar, que todavía
-  requieren cargar agua/luz, ordenados del más antiguo al más reciente y con el
-  badge **Atrasado · Mes Año** (solo lectura de montos, misma convención ámbar).
+- También se listan los registros de meses anteriores sin cobrar, ordenados del
+  más antiguo al más reciente y con el badge **Atrasado · Mes Año** (misma
+  convención ámbar).
+- Rigen exactamente las mismas reglas que el mes actual: una fila atrasada
+  **sigue en el listado aunque ya tenga agua/luz cargados** (con estado
+  **Cargado** y acción **Actualizar**) y **solo desaparece cuando se cobra el
+  mes**. Así se puede corregir un monto cargado por error en un mes anterior.
 - El encabezado de la pantalla siempre indica el **mes actual** (no se confunde
   con el primer atrasado del listado).
 - Los servicios atrasados son de contratos activos; el mes de vencimiento sí es
@@ -252,16 +256,44 @@ contrato.
   mensuales **no pagados, sin ajuste manual y del mes en curso en adelante**
   (hasta el mes de vencimiento) se recalculan automáticamente; los meses ya
   cobrados no se tocan.
+- Si se **destildan** "cobra expensa / agua / luz", esos conceptos se limpian
+  de los mismos registros (incluido el ajuste manual de expensa) para que el
+  total no siga sumando montos que las pantallas ya no muestran.
+- **Corrección de un dato mal cargado con un aumento pendiente:** si el mes en
+  curso ya tiene un aumento **PENDIENTE**, el monto de alquiler/expensa que se
+  carga al editar es el monto **anterior** al aumento: el aumento se recalcula
+  sobre esa nueva base con su **porcentaje congelado** y se actualizan el
+  contrato, la sección Aumentos y el cobro del mes. Ejemplo: alquiler cargado
+  por error en $100.000 con 10 % de aumento este mes (aumento $110.000); se
+  corrige el contrato a $200.000 y el aumento pasa a $220.000. El modal de
+  edición avisa el porcentaje pendiente y el monto que quedará.
+  Los aumentos ya **cobrados (CONSOLIDADO)** y los de **meses anteriores**
+  nunca se recalculan: quedan congelados como histórico.
 - Se pueden subir o reemplazar el archivo adjunto en cualquier momento.
 
 ### Cierre de contrato
 
-- **Cerrar contrato:** lo marca como finalizado (con confirmación).
-  Libera el departamento si no hay otros contratos activos en él, y el
-  inquilino queda como "Anterior" si ya no tiene contratos activos.
+- **Cerrar contrato:** abre un **modal de confirmación** con el resumen del
+  contrato (departamento, inquilino, fechas, alquiler y expensa actuales,
+  impuesto, servicios incluidos, configuración de aumento y estado) y el aviso
+  de las consecuencias del cierre. Botón verde para confirmar, rojo para
+  cancelar (cancelar no cierra nada).
+- Al confirmar, el contrato queda finalizado: libera el departamento si no hay
+  otros contratos activos en él, y el inquilino queda como "Anterior" si ya no
+  tiene contratos activos.
 - El cierre manual es independiente de la fecha de vencimiento: un contrato
   puede cerrarse aunque su `fecha_fin` sea futura, y un contrato cuya
   `fecha_fin` ya pasó aparece "Vencido" mientras no se cierre.
+
+### Contratos finalizados
+
+La pestaña **Finalizados** tiene dos acciones por fila:
+
+- **Ver datos del contrato:** abre el mismo modal que la edición, con todos los
+  datos cargados (montos iniciales y actuales, fechas, aumentos, servicios y
+  adjunto) pero **en solo lectura**: ningún campo puede modificarse y no hay
+  botón de guardar. Desde ahí también se descarga el adjunto, si tiene.
+- **Descargar archivo:** sólo si el contrato tiene adjunto cargado.
 
 ### Adjuntos
 
@@ -317,6 +349,10 @@ modificarse anticipadamente.
   contrato (ej. 10 % → 15 %): el nuevo valor se usa recién para el próximo
   aumento que aún no se haya generado. La regla vale para MANUAL e ICL y está
   protegida en backend.
+- Sí se recalcula el **monto** de un PENDIENTE del mes en curso cuando se
+  corrigen el alquiler o la expensa del contrato: el monto corregido pasa a ser
+  el anterior del aumento y la propuesta se recalcula con el porcentaje
+  congelado (ver Contratos → Edición).
 - Un aumento **no se aplica nunca** si su período de vigencia cae en un mes
   posterior al mes de `fecha_fin`; si cae **en el mismo mes de vencimiento,
   sí** puede aplicarse.
@@ -446,6 +482,9 @@ del período.
 - La hoja impresa no incluye la barra lateral de navegación, los botones, la
   columna de selección ni la columna de acciones; los modales y los avisos
   emergentes también se ocultan (ver reglas visuales en convenciones ui.md).
+- Las columnas **Expensa, Agua, Luz e Impuesto** se **saltean** cuando ningún
+  inquilino del listado tiene ese concepto cargado (columna entera sin montos),
+  para no imprimir columnas vacías. Vale también para el historial de pagos.
 
 ---
 

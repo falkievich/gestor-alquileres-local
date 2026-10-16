@@ -12,9 +12,7 @@ from app.service.mes_service import (
     preparar_registro_mes,
     calcular_estado_servicios,
     calcular_proximo_aumento,
-    calcular_alquiler,
-    calcular_expensa,
-    calcular_total,
+    total_efectivo_registro,
     contrato_vigente_para_mes,
 )
 
@@ -43,16 +41,7 @@ def get_dashboard(session: Session = Depends(get_session)):
         registro, porcentaje_aplicado = preparar_registro_mes(
             session, contrato, anio, mes)
 
-        alq_efectivo = registro.alquiler_override if registro.alquiler_override is not None else registro.alquiler_calculado
-        exp_efectiva = registro.expensa_override if registro.expensa_override is not None else registro.expensa_calculada
-
-        total_calculado = calcular_total(
-            alq_efectivo,
-            exp_efectiva,
-            registro.agua,
-            registro.luz,
-            registro.impuesto
-        )
+        total_calculado = total_efectivo_registro(registro)
 
         # Actualizar total en DB
         if registro.total != total_calculado:
@@ -111,19 +100,7 @@ def get_dashboard(session: Session = Depends(get_session)):
         dep = session.get(Departamento, contrato.id_departamentos)
         inq = session.get(Inquilino, contrato.id_inquilinos)
 
-        alq_efectivo = (
-            reg_atrasado.alquiler_override
-            if reg_atrasado.alquiler_override is not None
-            else reg_atrasado.alquiler_calculado
-        )
-        exp_efectiva = (
-            reg_atrasado.expensa_override
-            if reg_atrasado.expensa_override is not None
-            else reg_atrasado.expensa_calculada
-        )
-        total_efectivo = calcular_total(
-            alq_efectivo, exp_efectiva,
-            reg_atrasado.agua, reg_atrasado.luz, reg_atrasado.impuesto)
+        total_efectivo = total_efectivo_registro(reg_atrasado)
 
         estado_servicios = calcular_estado_servicios(contrato, reg_atrasado)
 
@@ -246,8 +223,5 @@ def override_registro(
     registro = crud_registros.update_registro(
         session, id_registro, update_data)
 
-    alq_efectivo = registro.alquiler_override if registro.alquiler_override is not None else registro.alquiler_calculado
-    exp_efectiva = registro.expensa_override if registro.expensa_override is not None else registro.expensa_calculada
-    total_calculado = calcular_total(
-        alq_efectivo, exp_efectiva, registro.agua, registro.luz, registro.impuesto)
+    total_calculado = total_efectivo_registro(registro)
     return crud_registros.update_registro(session, id_registro, RegistroMensualUpdate(total=total_calculado))

@@ -120,8 +120,10 @@ Responsabilidades:
   y se persiste si cambió.
   Fórmula común: `total = alquiler_efectivo + expensa_efectiva + agua + luz +
   impuesto` (solo sumandos no-None), con `efectivo = override ?? calculado`.
-- GET `dashboard/mes-actual`, override, servicios/guardar y modificación de
-  aumentos recalculan el total y lo actualizan en DB.
+- `total_efectivo_registro(registro)` (mes_service) es la **única** implementación
+  de esa fórmula: la usan GET `dashboard/mes-actual` (frescos y atrasados),
+  `override`, `servicios/guardar`, la sincronización por edición de contrato y
+  las dos funciones de aumentos. Es pura: no persiste nada.
 
 ### Overrides
 
@@ -137,10 +139,48 @@ Responsabilidades:
 
 ### Recalculación al editar contrato
 
-- Cuando se actualiza `alquiler_base_actual` / `expensa_base_actual` /
-  `impuesto_fijo`, `_sincronizar_registros_mensuales` (crud/contratos.py)
-  propaga a los registros **no pagados, sin override, del mes actual (o mes
-  de inicio) hasta el mes de fecha_fin**. Meses pagados nunca se modifican.
+`crud/contratos.py → update_contrato` hace, en este orden:
+
+1. Compara el payload contra el contrato para saber si cambiaron realmente
+   `alquiler_base_actual` y/o `expensa_base_actual` (no alcanza con que vengan
+   en el body: el frontend los manda siempre).
+2. Aplica los campos y commitea.
+3. Si cambió algún monto, `rebasar_aumento_pendiente` (mes_service) re-calcula
+   el aumento PENDIENTE del contrato — ver abajo.
+4. `_sincronizar_registros_mensuales` propaga el `*_base_actual` final y el
+   `impuesto_fijo` a los registros **no pagados, sin override, del mes actual
+   (o mes de inicio) hasta el mes de fecha_fin**. Meses pagados nunca se
+   modifican. Además limpia (`None`) `expensa_calculada` + `expensa_override`,
+   `agua` y `luz` de esos registros cuando el contrato dejó de cobrar el
+   concepto: es el único caso en que se toca un override, porque si no el
+   `total` seguiría sumando un monto que la UI ya no muestra.
+
+`ContratoUpdate` usa `exclude_unset=True`, así que un campo ausente del JSON no
+se toca. Para poder **vaciar** los opcionales, el frontend manda `null`
+explícito en `impuesto_fijo`, `expensa_base_actual` y `fecha_ultimo_aumento`
+(`undefined` se omite al serializar y el valor viejo nunca se borraría).
+`alquiler_base_inicial` / `expensa_base_inicial` se omiten a propósito: son
+históricos y se conservan.
+
+### `rebasar_aumento_pendiente`
+
+Resuelve la corrección de un monto mal cargado: el aumento ya aplicado dejó el
+contrato con el monto aumentado, así que el monto que el usuario carga al editar
+se interpreta como el **anterior** al aumento.
+
+- Toma el PENDIENTE más reciente (`crud_historial.get_ultimo_pendiente`) y
+  aborta si su período es **anterior al mes en curso** (los meses pasados
+  quedan congelados) o si su registro mensual no existe o ya está pagado.
+- Re-basa **solo el concepto editado**: `*_anterior = *_base_actual` nuevo,
+  `*_propuesto = anterior × factor`, `*_aplicado = *_propuesto`. El factor sale
+  del porcentaje **congelado** del evento (`1 + porcentaje_*_propuesto / 100`),
+  no de la configuración actual del contrato, así un cambio de 10 % → 15 % no
+  retoca la propuesta ya generada (vale igual para ICL: el porcentaje congelado
+  deriva del `coeficiente_icl`).
+- Sincroniza en un único commit historial + contrato (`*_base_actual` =
+  propuesto) + registro del período (`*_calculado`, `porcentaje_aumento_usado`
+  y `total`), preservando los overrides.
+- Un aumento CONSOLIDADO nunca entra: al cobrar el mes deja de ser PENDIENTE.
 
 ### Dashboard y Servicios comparten lógica
 

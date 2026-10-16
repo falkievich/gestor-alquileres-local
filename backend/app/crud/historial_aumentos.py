@@ -29,6 +29,23 @@ def existe_posterior(
     ).first() is not None
 
 
+def get_ultimo_pendiente(
+    session: Session, id_contratos: int
+) -> Optional[HistorialAumento]:
+    """
+    Aumento PENDIENTE más reciente del contrato: el único re-calculable
+    (los pendientes anteriores solo pueden cobrarse, no modificarse).
+    """
+    return session.exec(
+        select(HistorialAumento).where(
+            HistorialAumento.id_contratos == id_contratos,
+            HistorialAumento.estado == "PENDIENTE",
+        ).order_by(
+            HistorialAumento.anio.desc(), HistorialAumento.mes.desc(),
+        )
+    ).first()
+
+
 def get_by_contrato_periodo(
     session: Session, id_contratos: int, anio: int, mes: int
 ) -> Optional[HistorialAumento]:
