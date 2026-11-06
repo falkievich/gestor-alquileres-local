@@ -42,3 +42,4 @@ desktop.ini
 *.swo
 /python
 frontend/package-lock.json
+.cursor

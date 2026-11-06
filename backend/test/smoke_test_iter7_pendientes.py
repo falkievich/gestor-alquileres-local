@@ -180,7 +180,7 @@ r = client.get("/dashboard/mes-actual")
 check("atrasado pagado ya no figura",
       id_reg_c1 not in [i["registro"]["id_registros_mensuales"] for i in r.json() if i.get("atrasado")])
 # Y aparece en historial de pagos
-r = client.get("/dashboard/historial-pagos", params={"anio": ANIO, "mes": MES_A1})
+r = client.get("/dashboard/historial-pagos", params={"anio": ANIO_A1, "mes": MES_A1})
 check("aparece en historial de pagos",
       any(p["registro"]["id_registros_mensuales"] == id_reg_c1 for p in r.json()))
 
@@ -252,12 +252,80 @@ with Session(engine) as s:
     id_reg_c4 = reg_c4.id_registros_mensuales
 r = client.post(f"/dashboard/registros/{id_reg_c4}/pagado")
 check("C4 finalizado: registro anterior cobrable por API", r.status_code == 200, str(r.status_code))
-r = client.get("/dashboard/historial-pagos", params={"anio": ANIO, "mes": MES_A1})
+r = client.get("/dashboard/historial-pagos", params={"anio": ANIO_A1, "mes": MES_A1})
 check("C4 pagado aparece en historial de pagos",
       any(p["registro"]["id_registros_mensuales"] == id_reg_c4 for p in r.json()))
 
+# ── Modificar un aumento atrasado propaga a los meses posteriores ────
+# C5: aumento PENDIENTE en MES-3 (454636 -> 500100); MES-2 ya cobrado,
+# MES-1 sin cobrar con ajuste manual y el mes en curso generado por el
+# Dashboard, todos con el monto propuesto original.
+ANIO_A3, MES_A3 = sumar_meses(ANIO, MES, -3)
+ids_dep.append(crear_dep("TP65"))
+id_c5 = crear_contrato(ids_dep[-1], fecha_inicio=f"{ANIO - 1}-{MES:02d}-01",
+                       alquiler_base_actual=500100,
+                       fecha_ultimo_aumento=f"{ANIO_A3}-{MES_A3:02d}-01")
+with Session(engine) as s:
+    regs_c5 = {
+        "a3": RegistroMensual(id_contratos=id_c5, anio=ANIO_A3, mes=MES_A3,
+                              alquiler_calculado=500100, total=500100),
+        "a2": RegistroMensual(id_contratos=id_c5, anio=ANIO_A2, mes=MES_A2,
+                              alquiler_calculado=500100, total=500100, pagado=True),
+        "a1": RegistroMensual(id_contratos=id_c5, anio=ANIO_A1, mes=MES_A1,
+                              alquiler_calculado=500100, alquiler_override=490000,
+                              total=490000),
+    }
+    h_c5 = HistorialAumento(id_contratos=id_c5, anio=ANIO_A3, mes=MES_A3,
+                            estado="PENDIENTE", tipo_aumento="MANUAL",
+                            alquiler_anterior=454636, alquiler_propuesto=500100,
+                            alquiler_aplicado=500100,
+                            porcentaje_alquiler_propuesto=10.0,
+                            porcentaje_alquiler_aplicado=10.0)
+    s.add_all([*regs_c5.values(), h_c5])
+    s.commit()
+    for v in regs_c5.values():
+        s.refresh(v)
+    ids_reg_c5 = {k: v.id_registros_mensuales for k, v in regs_c5.items()}
+    s.refresh(h_c5)
+    id_h_c5 = h_c5.id_historial_aumentos
+client.get("/dashboard/mes-actual")
+with Session(engine) as s:
+    reg_c5_actual = s.exec(select(RegistroMensual).where(
+        RegistroMensual.id_contratos == id_c5,
+        RegistroMensual.anio == ANIO, RegistroMensual.mes == MES)).first()
+    check("C5 mes en curso generado con el propuesto original",
+          reg_c5_actual is not None and reg_c5_actual.alquiler_calculado == 500100)
+    ids_reg_c5["actual"] = reg_c5_actual.id_registros_mensuales
+
+r = client.patch(f"/aumentos/historial/{id_h_c5}", json={"alquiler_aplicado": 500000})
+check("C5 modificar aumento atrasado -> 200", r.status_code == 200, str(r.status_code))
+with Session(engine) as s:
+    reg = {k: s.get(RegistroMensual, v) for k, v in ids_reg_c5.items()}
+    check("C5 mes del aumento con el aplicado",
+          reg["a3"].alquiler_calculado == 500000 and reg["a3"].total == 500000)
+    check("C5 mes ya cobrado intacto",
+          reg["a2"].alquiler_calculado == 500100 and reg["a2"].total == 500100)
+    check("C5 atrasado posterior hereda el aplicado y conserva el ajuste manual",
+          reg["a1"].alquiler_calculado == 500000 and reg["a1"].alquiler_override == 490000
+          and reg["a1"].total == 490000)
+    check("C5 mes en curso hereda el aplicado",
+          reg["actual"].alquiler_calculado == 500000 and reg["actual"].total == 500000,
+          f"={reg['actual'].alquiler_calculado}")
+    check("C5 contrato con el aplicado",
+          s.get(Contrato, id_c5).alquiler_base_actual == 500000)
+
+# Cobrar el mes del aumento no revierte nada en el mes en curso
+r = client.post(f"/dashboard/registros/{ids_reg_c5['a3']}/pagado")
+check("C5 cobrar mes del aumento", r.status_code == 200, str(r.status_code))
+r = client.get("/dashboard/mes-actual")
+fila_c5 = next(i for i in r.json()
+               if i["contrato"]["id_contratos"] == id_c5 and not i.get("atrasado"))
+check("C5 Dashboard del mes en curso muestra el aplicado",
+      fila_c5["registro"]["alquiler_calculado"] == 500000 and fila_c5["total"] == 500000,
+      f"={fila_c5['total']}")
+
 # ── Limpieza ─────────────────────────────────────────────────────────
-for cid in (id_c1, id_c2, id_c3, id_c4):
+for cid in (id_c1, id_c2, id_c3, id_c4, id_c5):
     client.delete(f"/contratos/{cid}")
 client.delete(f"/inquilinos/{id_inq}")
 for did in ids_dep:

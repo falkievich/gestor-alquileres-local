@@ -273,6 +273,12 @@ Sincronización (commit único):
 3. `registros_mensuales`: sobreescrita `alquiler_calculado` /
    `expensa_calculada` y `porcentaje_aumento_usado` del registro del período,
    recalcula `total` común. **Los overrides no se tocan.**
+4. `registros_mensuales` posteriores al período y **no pagados** (atrasados
+   intermedios y mes en curso): se generaron con el monto que tenía el
+   contrato (el propuesto original), así que heredan `alquiler_calculado` /
+   `expensa_calculada` aplicados y recalculan `total`. Como `existe_posterior()`
+   ya garantizó que no hay aumentos posteriores, todos derivan de este. Los
+   pagados quedan como histórico y los overrides se preservan.
 
 ### Consolidación
 

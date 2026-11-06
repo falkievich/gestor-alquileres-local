@@ -35,6 +35,13 @@ def historial_de(session, id_contratos, anio, mes):
 
 
 ANIO, MES = mes_service.get_mes_actual()
+# Base 3 meses antes del mes actual: con periodicidad 3 (o 1) el aumento
+# siempre cae en el mes en curso, sin depender de la fecha de ejecución.
+MES_BASE, ANIO_BASE = MES - 3, ANIO
+while MES_BASE < 1:
+    MES_BASE += 12
+    ANIO_BASE -= 1
+FECHA_BASE = f"{ANIO_BASE}-{MES_BASE:02d}-01"
 
 # ── Preparación de datos ─────────────────────────────────────────────
 def crear_dep(codigo):
@@ -49,7 +56,7 @@ id_inq = r.json()["id_inquilinos"]
 def crear_contrato(dep, **kw):
     base = {
         "id_departamentos": dep, "id_inquilinos": id_inq,
-        "fecha_inicio": "2026-03-01", "fecha_fin": "2027-03-01",
+        "fecha_inicio": FECHA_BASE, "fecha_fin": f"{ANIO + 1}-{MES:02d}-01",
         "alquiler_base_actual": 100000, "tipo_aumento": "MANUAL",
         "porcentaje_aumento": 10.0, "periodicidad_aumento_meses": 3,
     }
@@ -61,14 +68,9 @@ def crear_contrato(dep, **kw):
 # C1: MANUAL con expensa (caso principal)
 id_c1 = crear_contrato(ids_dep[0], cobra_expensa=True, expensa_base_actual=20000)
 # C2: ICL sin expensa, próximo aumento = base + 3 debe caer en (ANIO, MES)
-mes_base_c2 = MES - 3
-anio_base_c2 = ANIO
-while mes_base_c2 < 1:
-    mes_base_c2 += 12
-    anio_base_c2 -= 1
 id_c2 = crear_contrato(ids_dep[1], alquiler_base_actual=480000, tipo_aumento="ICL",
                        porcentaje_aumento=0, periodicidad_aumento_meses=3,
-                       fecha_ultimo_aumento=f"{anio_base_c2}-{mes_base_c2:02d}-01")
+                       fecha_ultimo_aumento=FECHA_BASE)
 # C3: SIN_AUMENTO
 id_c3 = crear_contrato(ids_dep[2], tipo_aumento="SIN_AUMENTO",
                        porcentaje_aumento=0, periodicidad_aumento_meses=0)

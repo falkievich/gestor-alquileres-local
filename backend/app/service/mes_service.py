@@ -583,6 +583,9 @@ def modificar_aumento_pendiente(session: Session, id_historial_aumentos: int, da
       - *_anterior, *_propuesto y porcentajes propuestos quedan congelados.
       - Sincroniza contrato (base_actual) y registro mensual del período
         (calculado + total, preservando overrides) en un único commit.
+      - Los registros posteriores sin cobrar (atrasados o del mes en curso)
+        se generaron con el monto anterior del contrato y heredan el aplicado;
+        los ya cobrados no se tocan.
       - Si no existe el registro mensual del período (inconsistencia), aborta
         sin cambios parciales.
 
@@ -698,7 +701,20 @@ def modificar_aumento_pendiente(session: Session, id_historial_aumentos: int, da
     registro.total = total_efectivo_registro(registro)
     session.add(registro)
 
-    # Commit único: historial + contrato + registro quedan consistentes o no
+    # 4) Registros posteriores sin cobrar: como no hay aumentos posteriores
+    #    (existe_posterior), todos derivan de este y cobran el aplicado.
+    for posterior in crud_registros.get_registros_by_contrato(
+            session, historial.id_contratos):
+        if posterior.pagado or \
+                (posterior.anio, posterior.mes) <= (historial.anio, historial.mes):
+            continue
+        posterior.alquiler_calculado = historial.alquiler_aplicado
+        if historial.expensa_aplicada is not None and contrato.cobra_expensa:
+            posterior.expensa_calculada = historial.expensa_aplicada
+        posterior.total = total_efectivo_registro(posterior)
+        session.add(posterior)
+
+    # Commit único: historial + contrato + registros quedan consistentes o no
     # se aplica ningún cambio.
     session.commit()
     session.refresh(historial)

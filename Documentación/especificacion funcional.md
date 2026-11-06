@@ -103,7 +103,9 @@ mensual puntual sin afectar el contrato:
 
 - El Dashboard también lista los registros de meses anteriores que siguen sin
   pagar, con sus **montos históricos congelados** (no se regeneran ni
-  recalculan; los ajustes manuales previos se conservan).
+  recalculan; los ajustes manuales previos se conservan). Única excepción:
+  modificar un aumento pendiente anterior actualiza los meses sin cobrar que
+  derivan de él (ver Aumentos → Modificar aumento).
 - Se muestran **arriba** del mes en curso, ordenados del más antiguo al más
   reciente, identificados con el badge **"Atrasado · Mes Año"** (ver
   convenciones ui).
@@ -381,6 +383,12 @@ próximos), con el botón **"Modificar aumento"**:
   montos). La interfaz deshabilita el botón y el backend rechaza la operación.
 - La modificación recalcula el registro mensual del período: al cobrar el mes,
   el aumento consolidado refleja el monto aplicado final.
+- También alcanza a **todos los meses posteriores sin cobrar**, que ya venían
+  con el monto del aumento original: tanto atrasados intermedios como el mes
+  en curso pasan a cobrar el monto modificado, y los meses futuros se generan
+  con él. Ejemplo: en noviembre se modifica el aumento de octubre (sin cobrar)
+  de $500.100 a $500.000; octubre y noviembre quedan en $500.000. Los meses ya
+  cobrados no cambian y los ajustes manuales se conservan.
 
 ### Pestaña Historial de aumentos
 
