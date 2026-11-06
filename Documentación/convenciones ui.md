@@ -78,9 +78,11 @@ modales del sistema:
   resumen en filas `etiqueta / valor` (importes en `font-mono`) y dos botones
   `flex-1` al pie. El de cobro muestra el desglose del mes (alquiler, expensa,
   agua, luz, impuesto, total destacado); el de cierre de contrato muestra los
-  datos del contrato más un aviso ámbar con las consecuencias del cierre.
-  En el cierre el botón de confirmar va en **verde** y el de cancelar en
-  **rojo**.
+  datos del contrato más un aviso ámbar con las consecuencias del cierre y,
+  si tiene meses sin cobrar, una caja ámbar de borde más intenso
+  (`border-amber-400`) que los lista (mes y total en `font-mono`). En el cierre
+  el botón de confirmar va en **verde** (deshabilitado hasta cargar ese aviso)
+  y el de cancelar en **rojo**.
 - **Modal en solo lectura** (detalle de un contrato finalizado): reutiliza el
   mismo formulario de edición con todos los campos `disabled`; el subtítulo
   aclara que los datos no pueden modificarse, el adjunto se ofrece como botón
@@ -117,6 +119,7 @@ font-semibold` salvo indicación):
 | Finalizado / Anterior / No pagado | gris (`bg-gray-100 text-gray-500`) | Contratos, Inquilinos, pagos |
 | Ajustado | amarillo rectangular (`bg-yellow-100 text-yellow-700`) | Dashboard (override) |
 | Atrasado | ámbar (ver sección siguiente) | Dashboard, Servicios, Aumentos |
+| Contrato finalizado | gris rectangular (`bg-gray-200 text-gray-700`) | Dashboard, Servicios, Aumentos (deuda de un contrato cerrado) |
 
 Casos particulares:
 

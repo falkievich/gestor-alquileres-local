@@ -37,9 +37,19 @@ def update_inquilino(session: Session, id: int, data: InquilinoUpdate) -> Option
 
 
 def delete_inquilino(session: Session, id: int) -> bool:
+    from fastapi import HTTPException
+    from app.crud.contratos import tiene_contratos
+    from app.model.models import Contrato
+
     inq = session.get(Inquilino, id)
     if not inq:
         return False
+    if tiene_contratos(session, Contrato.id_inquilinos, id):
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar el inquilino porque tiene "
+                   "contratos asociados (activos o finalizados).",
+        )
     session.delete(inq)
     session.commit()
     return True

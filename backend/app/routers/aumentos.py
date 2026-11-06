@@ -10,6 +10,7 @@ from app.model.models import (
 )
 from app.service.mes_service import (
     calcular_proximo_aumento, get_mes_actual, modificar_aumento_pendiente,
+    contrato_vigente_para_mes,
 )
 from datetime import date
 
@@ -78,9 +79,11 @@ def historial_aumentos(
         contrato = session.get(Contrato, h.id_contratos)
         if not contrato:
             continue
-        # Los aumentos PENDIENTES de contratos cerrados no se muestran como
-        # pendientes operativos (los CONSOLIDADOS siguen en el historial).
-        if estado == "PENDIENTE" and contrato.estado != 'activo':
+        # Un PENDIENTE fuera de la vigencia (ej.: se acortó fecha_fin) no se
+        # puede cobrar ni consolidar: no se muestra. Los de contratos cerrados
+        # siguen visibles, igual que su deuda, hasta cobrarse el mes.
+        if h.estado == "PENDIENTE" and \
+                not contrato_vigente_para_mes(contrato, h.anio, h.mes):
             continue
         if id_inquilinos and contrato.id_inquilinos != id_inquilinos:
             continue

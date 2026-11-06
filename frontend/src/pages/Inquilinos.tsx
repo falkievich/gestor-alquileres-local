@@ -119,9 +119,14 @@ export default function Inquilinos() {
 
   async function eliminar(inq: Inquilino) {
     if (!confirm(`¿Eliminar ${inq.nombre_apellido}?`)) return
-    await api.delete(`/inquilinos/${inq.id_inquilinos}`)
-    toast('Se eliminó el inquilino correctamente')
-    cargar()
+    try {
+      await api.delete(`/inquilinos/${inq.id_inquilinos}`)
+      toast('Se eliminó el inquilino correctamente')
+      cargar()
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Error al eliminar el inquilino'
+      toast(msg, 'error')
+    }
   }
 
   return (

@@ -116,9 +116,14 @@ export default function Departamentos() {
 
   async function eliminar(dep: Departamento) {
     if (!confirm(`¿Eliminar ${dep.piso} ${dep.codigo}?`)) return
-    await api.delete(`/departamentos/${dep.id_departamentos}`)
-    toast('Se eliminó el departamento correctamente')
-    cargar()
+    try {
+      await api.delete(`/departamentos/${dep.id_departamentos}`)
+      toast('Se eliminó el departamento correctamente')
+      cargar()
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Error al eliminar el departamento'
+      toast(msg, 'error')
+    }
   }
 
   const libres = departamentos.filter(d => !d.esta_ocupado)

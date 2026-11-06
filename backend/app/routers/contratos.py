@@ -75,6 +75,19 @@ def tiene_pagos(id: int, session: Session = Depends(get_session)):
     return {"tiene_pagos": pagado is not None}
 
 
+@router.get("/{id}/meses-sin-cobrar")
+def meses_sin_cobrar(id: int, session: Session = Depends(get_session)):
+    """Meses del contrato todavía sin cobrar (se avisan antes de cerrarlo)."""
+    from app.service.mes_service import total_efectivo_registro
+    c = crud.get_contrato(session, id)
+    if not c:
+        raise HTTPException(status_code=404, detail="Contrato no encontrado")
+    return [
+        {"anio": r.anio, "mes": r.mes, "total": total_efectivo_registro(r)}
+        for r in crud.meses_sin_cobrar(session, c)
+    ]
+
+
 @router.put("/{id}", response_model=ContratoRead)
 def actualizar_contrato(id: int, data: ContratoUpdate, session: Session = Depends(get_session)):
     c = crud.update_contrato(session, id, data)

@@ -1,8 +1,9 @@
 """
 Smoke test del Punto 4: cobros pendientes de meses anteriores (atrasados).
 Dashboard/Servicios muestran mes actual + pendientes anteriores con montos
-congelados; cobro posterior consolida solo su período; modificación de
-aumentos PENDIENTES viejos bloqueada si existe uno posterior.
+congelados (también los de contratos finalizados); cobro posterior consolida
+solo su período; modificación de aumentos PENDIENTES viejos bloqueada si
+existe uno posterior.
 Ejecutar desde backend/: .venv\\Scripts\\python.exe test\\smoke_test_iter7_pendientes.py
 """
 import sys, os
@@ -42,6 +43,8 @@ def sumar_meses(anio, mes, n):
 ANIO, MES = mes_service.get_mes_actual()
 ANIO_A1, MES_A1 = sumar_meses(ANIO, MES, -1)   # mes atrasado 1 (más reciente)
 ANIO_A2, MES_A2 = sumar_meses(ANIO, MES, -2)   # mes atrasado (más antiguo)
+# Los atrasados tienen que caer dentro de la vigencia del contrato.
+FECHA_INICIO = f"{ANIO_A2}-{MES_A2:02d}-01"
 
 
 # ── Preparación de datos ─────────────────────────────────────────────
@@ -57,7 +60,7 @@ id_inq = r.json()["id_inquilinos"]
 def crear_contrato(dep, **kw):
     base = {
         "id_departamentos": dep, "id_inquilinos": id_inq,
-        "fecha_inicio": f"{ANIO}-{MES:02d}-01", "fecha_fin": f"{ANIO + 1}-{MES:02d}-01",
+        "fecha_inicio": FECHA_INICIO, "fecha_fin": f"{ANIO + 1}-{MES:02d}-01",
         "alquiler_base_actual": 120000, "tipo_aumento": "MANUAL",
         "porcentaje_aumento": 10.0, "periodicidad_aumento_meses": 12,
     }
@@ -231,17 +234,19 @@ check("flag se_puede_modificar=False en viejo",
 check("flag se_puede_modificar=True en actual",
       fila_actual is not None and fila_actual["se_puede_modificar"] is True)
 
-# ── Contrato finalizado: pendientes NO reaparecen como atrasados ────
+# ── Contrato finalizado: su deuda sigue visible hasta cobrarse ───────
 r = client.post(f"/contratos/{id_c4}/cerrar")
 check("cerrar C4", r.status_code == 200, str(r.status_code))
 r = client.get("/dashboard/mes-actual")
-check("C4 finalizado: atrasado NO visible",
-      not any(i.get("atrasado") and i["contrato"]["id_contratos"] == id_c4 for i in r.json()))
+filas_c4 = [i for i in r.json() if i["contrato"]["id_contratos"] == id_c4]
+check("C4 finalizado: atrasado sigue visible",
+      any(i.get("atrasado") and i["mes"] == MES_A1 for i in filas_c4))
+check("C4 finalizado: mes en curso sin cobrar sigue visible (no atrasado)",
+      any(not i.get("atrasado") and (i["anio"], i["mes"]) == (ANIO, MES) for i in filas_c4))
+check("C4 finalizado: filas marcadas como contrato finalizado",
+      all(i["contrato"]["estado"] == "finalizado" for i in filas_c4))
 r = client.get("/servicios/pendientes")
-check("C4 finalizado: NO visible en servicios",
-      all(i["contrato"]["id_contratos"] != id_c4 for i in r.json()))
-r = client.get("/aumentos/historial", params={"estado": "PENDIENTE"})
-check("C4 finalizado: sin pendientes de aumentos visibles",
+check("C4 sin servicios: no figura en Servicios",
       all(i["contrato"]["id_contratos"] != id_c4 for i in r.json()))
 with Session(engine) as s:
     check("C4: registro pendiente permanece en DB sin cambios",
@@ -305,9 +310,10 @@ with Session(engine) as s:
           reg["a3"].alquiler_calculado == 500000 and reg["a3"].total == 500000)
     check("C5 mes ya cobrado intacto",
           reg["a2"].alquiler_calculado == 500100 and reg["a2"].total == 500100)
-    check("C5 atrasado posterior hereda el aplicado y conserva el ajuste manual",
-          reg["a1"].alquiler_calculado == 500000 and reg["a1"].alquiler_override == 490000
-          and reg["a1"].total == 490000)
+    # El ajuste era -10100 sobre 500100: sigue siendo -10100 sobre 500000.
+    check("C5 atrasado posterior hereda el aplicado y conserva la diferencia del ajuste",
+          reg["a1"].alquiler_calculado == 500000 and reg["a1"].alquiler_override == 489900
+          and reg["a1"].total == 489900, f"={reg['a1'].alquiler_override}")
     check("C5 mes en curso hereda el aplicado",
           reg["actual"].alquiler_calculado == 500000 and reg["actual"].total == 500000,
           f"={reg['actual'].alquiler_calculado}")

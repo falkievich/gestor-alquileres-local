@@ -39,9 +39,19 @@ def update_departamento(session: Session, id: int, data: DepartamentoUpdate) -> 
 
 
 def delete_departamento(session: Session, id: int) -> bool:
+    from fastapi import HTTPException
+    from app.crud.contratos import tiene_contratos
+    from app.model.models import Contrato
+
     dep = session.get(Departamento, id)
     if not dep:
         return False
+    if tiene_contratos(session, Contrato.id_departamentos, id):
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar el departamento porque tiene "
+                   "contratos asociados (activos o finalizados).",
+        )
     session.delete(dep)
     session.commit()
     return True

@@ -118,11 +118,18 @@ export default function Servicios() {
                           {item.departamento.direccion}
                         </div>
                       )}
-                      {item.atrasado && (
-                        <div className="mt-1">
-                          <span className="inline-flex items-center gap-1 text-xs bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-semibold">
-                            <Clock size={11} /> Atrasado · {MESES[item.registro.mes - 1]} {item.registro.anio}
-                          </span>
+                      {(item.atrasado || item.contrato.estado === 'finalizado') && (
+                        <div className="mt-1 flex gap-1 flex-wrap">
+                          {item.atrasado && (
+                            <span className="inline-flex items-center gap-1 text-xs bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-semibold">
+                              <Clock size={11} /> Atrasado · {MESES[item.registro.mes - 1]} {item.registro.anio}
+                            </span>
+                          )}
+                          {item.contrato.estado === 'finalizado' && (
+                            <span className="inline-block text-xs bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded font-semibold">
+                              Contrato finalizado
+                            </span>
+                          )}
                         </div>
                       )}
                     </td>

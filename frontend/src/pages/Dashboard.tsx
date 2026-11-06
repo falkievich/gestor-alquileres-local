@@ -42,6 +42,10 @@ function colPrint(conDatos: boolean) {
   return conDatos ? '' : 'col-vacia-impresion'
 }
 
+function alquilerEfectivo(reg: DashboardItem['registro']) {
+  return reg.alquiler_override ?? reg.alquiler_calculado
+}
+
 export default function Dashboard() {
   const toast = useToast()
   const [items, setItems] = useState<DashboardItem[]>([])
@@ -158,10 +162,15 @@ export default function Dashboard() {
     const promises = Array.from(seleccionados).map(idReg => {
       const item = visiblesCobrables.find(i => i.registro.id_registros_mensuales === idReg)
       if (!item) return Promise.resolve()
+      // El endpoint reemplaza los tres campos: se reenvían el ajuste de
+      // expensa y la nota existentes para no borrarlos.
+      const reg = item.registro
       const params: Record<string, string | number> = {
-        alquiler_override: item.registro.alquiler_calculado + delta,
+        alquiler_override: alquilerEfectivo(reg) + delta,
       }
-      if (ajusteMasivoData.nota_override !== '') params.nota_override = ajusteMasivoData.nota_override
+      if (reg.expensa_override != null) params.expensa_override = reg.expensa_override
+      const nota = ajusteMasivoData.nota_override || reg.nota_override
+      if (nota) params.nota_override = nota
       return api.post(`/dashboard/registros/${idReg}/override`, null, { params })
     })
     await Promise.all(promises)
@@ -495,6 +504,11 @@ export default function Dashboard() {
                             <Clock size={11} /> Atrasado · {MESES[item.mes - 1]} {item.anio}
                           </span>
                         )}
+                        {item.contrato.estado === 'finalizado' && (
+                          <span className="inline-block text-xs bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded font-semibold">
+                            Contrato finalizado
+                          </span>
+                        )}
                         {item.vencido && (
                           <span className="inline-block text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-semibold">
                             Vencido
@@ -618,21 +632,21 @@ export default function Dashboard() {
                     <span className="text-gray-500">{i.inquilino?.nombre_apellido}</span>
                     {delta !== 0 && ajusteMasivoData.alquiler_delta !== '' ? (
                       <span className="flex items-center gap-1.5 font-mono text-xs font-semibold">
-                        <span className="text-gray-800">{formatMoneda(i.registro.alquiler_calculado)}</span>
+                        <span className="text-gray-800">{formatMoneda(alquilerEfectivo(i.registro))}</span>
                         <span className={delta >= 0 ? 'text-green-600' : 'text-red-600'}>
-                          → {formatMoneda(i.registro.alquiler_calculado + delta)}
+                          → {formatMoneda(alquilerEfectivo(i.registro) + delta)}
                         </span>
                       </span>
                     ) : (
-                      <span className="font-mono text-xs text-gray-400">{formatMoneda(i.registro.alquiler_calculado)}</span>
+                      <span className="font-mono text-xs text-gray-400">{formatMoneda(alquilerEfectivo(i.registro))}</span>
                     )}
                   </div>
                 ))}
               </div>
 
               <p className="text-sm text-gray-500 mb-3">
-                Ingresá el monto a <strong>sumar o restar</strong> al alquiler base de cada pago seleccionado.
-                Usá un número negativo para aplicar un descuento.
+                Ingresá el monto a <strong>sumar o restar</strong> al alquiler de cada pago seleccionado
+                (si ya tenía un ajuste, se suma a ese ajuste). Usá un número negativo para aplicar un descuento.
               </p>
 
               <div className="space-y-3">

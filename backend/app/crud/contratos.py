@@ -7,6 +7,7 @@ from app.model.models import (
 from fastapi import HTTPException
 from app.service.mes_service import (
     get_mes_actual, rebasar_aumento_pendiente, total_efectivo_registro,
+    contrato_vigente_para_mes, fijar_montos_calculados,
 )
 
 
@@ -85,8 +86,9 @@ def update_contrato(session: Session, id: int, data: ContratoUpdate) -> Optional
 def _sincronizar_registros_mensuales(session: Session, contrato: Contrato) -> None:
     """
     Si se edita el alquiler/expensa actual de un contrato, propaga el cambio
-    a los registros mensuales NO pagados y sin override del mes en curso en
-    adelante. Los meses históricos pagados no se modifican.
+    a los registros mensuales NO pagados del mes en curso en adelante (dentro
+    de la vigencia). Un ajuste manual conserva su diferencia con el nuevo
+    monto. Los meses anteriores quedan congelados con sus montos históricos.
 
     Los conceptos que el contrato dejó de cobrar (expensa, agua, luz) se
     limpian del registro para que el total no siga sumando montos que las
@@ -103,20 +105,16 @@ def _sincronizar_registros_mensuales(session: Session, contrato: Contrato) -> No
     for registro in registros:
         if (registro.anio, registro.mes) < (anio_actual, mes_actual):
             continue
-        # No escribir en meses posteriores al vencimiento del contrato.
-        if (registro.anio, registro.mes) > (contrato.fecha_fin.year, contrato.fecha_fin.month):
+        if not contrato_vigente_para_mes(contrato, registro.anio, registro.mes):
             continue
-        cambio = False
-        if registro.alquiler_override is None and \
-                registro.alquiler_calculado != contrato.alquiler_base_actual:
-            registro.alquiler_calculado = contrato.alquiler_base_actual
-            cambio = True
-        if contrato.cobra_expensa:
-            if registro.expensa_override is None and \
-                    registro.expensa_calculada != contrato.expensa_base_actual:
-                registro.expensa_calculada = contrato.expensa_base_actual
-                cambio = True
-        elif registro.expensa_calculada is not None or registro.expensa_override is not None:
+        cambio = fijar_montos_calculados(
+            registro,
+            contrato.alquiler_base_actual,
+            contrato.expensa_base_actual if contrato.cobra_expensa else None,
+        )
+        if not contrato.cobra_expensa and (
+                registro.expensa_calculada is not None
+                or registro.expensa_override is not None):
             # El contrato dejó de cobrar expensa: se limpia el concepto
             # completo (incluido el ajuste manual, que ya no tiene sentido).
             registro.expensa_calculada = None
@@ -191,10 +189,37 @@ def update_blob(session: Session, id: int, blob: bytes, nombre: str) -> Optional
     return contrato
 
 
+def meses_sin_cobrar(session: Session, contrato: Contrato) -> List[RegistroMensual]:
+    """Registros sin cobrar del contrato dentro de su vigencia, del más antiguo al más reciente."""
+    registros = session.exec(
+        select(RegistroMensual).where(
+            RegistroMensual.id_contratos == contrato.id_contratos,
+            RegistroMensual.pagado == False,  # noqa: E712
+        ).order_by(RegistroMensual.anio.asc(), RegistroMensual.mes.asc())
+    ).all()
+    return [
+        r for r in registros
+        if contrato_vigente_para_mes(contrato, r.anio, r.mes)
+    ]
+
+
+def tiene_contratos(session: Session, columna, id: int) -> bool:
+    """True si algún contrato (activo o finalizado) referencia el id en la columna dada."""
+    return session.exec(select(Contrato).where(columna == id)).first() is not None
+
+
 def delete_contrato(session: Session, id: int) -> bool:
+    from app.model.models import HistorialAumento
+
     contrato = session.get(Contrato, id)
     if not contrato:
         return False
+    # Sus registros mensuales e historial de aumentos no tienen sentido sin el
+    # contrato y, como SQLite reutiliza ids, los heredaría uno nuevo.
+    for modelo in (RegistroMensual, HistorialAumento):
+        for fila in session.exec(
+                select(modelo).where(modelo.id_contratos == id)).all():
+            session.delete(fila)
     session.delete(contrato)
     session.commit()
     return True

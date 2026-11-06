@@ -133,9 +133,15 @@ Responsabilidades:
   se reconstruye el delta (`override - calculado`).
 - `RegistroMensualUpdate` usa `exclude_unset=True`; el endpoint `override`
   toma los valores por **query params** (pueden ser `None` → limpia el
-  override). "Restaurar" envía vacío y limpia los tres campos.
-- Los overrides **nunca se tocan** al modificar un aumento; ni al recalcular
-  por edición de contrato.
+  override). "Restaurar" envía vacío y limpia los tres campos. Por eso el
+  ajuste masivo reenvía el `expensa_override` y la nota existentes, y suma el
+  delta al alquiler efectivo (`override ?? calculado`).
+- Cuando cambia el monto base de un registro (edición del contrato, aumento
+  aplicado tarde, re-base o modificación de un aumento), el override
+  **conserva su diferencia** con el calculado: todo pasa por
+  `fijar_montos_calculados(registro, alquiler, expensa)` (mes_service), que
+  desplaza el override por `nuevo - anterior` y recalcula el total. Un
+  override en 0 (mes bonificado) queda en 0 y nunca queda negativo.
 
 ### Recalculación al editar contrato
 
@@ -148,8 +154,9 @@ Responsabilidades:
 3. Si cambió algún monto, `rebasar_aumento_pendiente` (mes_service) re-calcula
    el aumento PENDIENTE del contrato — ver abajo.
 4. `_sincronizar_registros_mensuales` propaga el `*_base_actual` final y el
-   `impuesto_fijo` a los registros **no pagados, sin override, del mes actual
-   (o mes de inicio) hasta el mes de fecha_fin**. Meses pagados nunca se
+   `impuesto_fijo` a los registros **no pagados, del mes actual en adelante y
+   dentro de la vigencia** (con `fijar_montos_calculados`: los overrides
+   conservan su diferencia). Meses pagados y meses anteriores nunca se
    modifican. Además limpia (`None`) `expensa_calculada` + `expensa_override`,
    `agua` y `luz` de esos registros cuando el contrato dejó de cobrar el
    concepto: es el único caso en que se toca un override, porque si no el
@@ -179,40 +186,56 @@ se interpreta como el **anterior** al aumento.
   deriva del `coeficiente_icl`).
 - Sincroniza en un único commit historial + contrato (`*_base_actual` =
   propuesto) + registro del período (`*_calculado`, `porcentaje_aumento_usado`
-  y `total`), preservando los overrides.
+  y `total`); los overrides conservan su diferencia.
 - Un aumento CONSOLIDADO nunca entra: al cobrar el mes deja de ser PENDIENTE.
 
 ### Dashboard y Servicios comparten lógica
 
-- Ambos llaman a `preparar_registro_mes`, que a su vez ejecuta
-  `aplicar_aumento_si_corresponde` (aumento automático antes de congelar el
-  registro) y a `get_or_create_registro`.
+- Ambos filtran el mes en curso con `contrato_operativo_hoy(contrato)`
+  (ya empezó por fecha exacta y el mes actual está en su vigencia) y llaman a
+  `preparar_registro_mes`:
+  1. genera como atrasados los meses vigentes **sin registro** entre el último
+     mes registrado del contrato y el mes pedido (`_meses_sin_registro`), en
+     orden, cada uno con su aumento. Un contrato sin ningún registro previo no
+     genera meses hacia atrás;
+  2. para cada mes, `_preparar_mes` ejecuta `aplicar_aumento_si_corresponde` y
+     `get_or_create_registro`. Si el aumento se aplicó y el registro ya
+     existía (se creó antes, por ej. con el ICL del BCRA sin publicar), el
+     registro pasa al monto aumentado con `fijar_montos_calculados`. Si ese
+     mes ya estaba cobrado, el registro no se toca y el aumento se consolida
+     en el acto (no queda un PENDIENTE sin mes por cobrar).
 - `calcular_estado_servicios()` comparte: `"Pendiente"` si falta agua o luz
   para un contrato que los cobra, `"OK"` si no.
 
 ### Cobros atrasados
 
-- El listado del mes también recupera, en una segunda consulta, los registros
-  `pagado == False` con `(anio < actual) OR (anio == actual AND mes < actual)`,
-  orden ascendente (antiguo → reciente).
+- El listado del mes agrega `registros_sin_cobrar_fuera_del_ciclo(session)`
+  (mes_service, compartida por Dashboard y Servicios): registros
+  `pagado == False` de meses anteriores de **cualquier** contrato y del mes en
+  curso de los contratos **finalizados**, solo dentro de la vigencia del
+  contrato, orden ascendente (antiguo → reciente).
 - Solo lectura: **no crea ni prepara nada**, y el total se calcula en la
   respuesta sin escribir DB.
-- Solo contratos **activos** reaparecen (los pendientes de contratos
-  finalizados quedan en DB pero fuera de las vistas operativas).
-- Cada item se marca con `atrasado: True`; los registros "frescos" van con
-  `atrasado: False`.
+- La deuda de un contrato finalizado sigue visible hasta cobrarse (la fila
+  trae `contrato.estado = 'finalizado'` y la UI la marca).
+- Cada item se marca con `atrasado = (anio, mes) < actual`; los registros
+  "frescos" van con `atrasado: False`.
 
 ---
 
 ## Vigencia y protecciones de fecha_fin
 
 - `contrato_vigente_para_mes(contrato, anio, mes)`: `True` mientras
-  `(anio, mes) <= (fecha_fin.year, fecha_fin.month)` — el **mes de vencimiento
-  sigue siendo válido**; los meses posteriores no.
+  `(inicio.year, inicio.month) <= (anio, mes) <= (fin.year, fin.month)` — el
+  **mes de inicio y el de vencimiento son válidos**; los anteriores y
+  posteriores no.
 - Está aplicada en: preparación de registros (409 si no vigente), cobrar
-  (`marcar_pagado`, 409), override (409) y servicios/guardar (409). El
-  Dashboard además omite contratos con `fecha_inicio > hoy` y los no vigentes
-  para el mes actual.
+  (`marcar_pagado`, 409), override (409), servicios/guardar (409), el listado
+  de atrasados, `GET /contratos/{id}/meses-sin-cobrar` y los PENDIENTE de
+  `GET /aumentos/historial` (un PENDIENTE fuera de la vigencia, por ejemplo
+  tras acortar `fecha_fin`, no se lista). Dashboard y Servicios además omiten
+  en el mes en curso los contratos con `fecha_inicio > hoy`
+  (`contrato_operativo_hoy`).
 - El cierre manual (`estado='finalizado'`) es independiente de la fecha: un
   contrato cerrado no genera registros aunque la fecha sea futura, y un
   contrato vencido no cerrado sigue operativo dentro del mes de vencimiento.
@@ -269,16 +292,18 @@ Sincronización (commit único):
 1. `historial_aumentos`: `*_aplicado` + porcentajes aplicados recalculados =
    `((aplicado - anterior) / anterior) * 100` + `fecha_actualizacion`.
 2. `contratos`: `*_base_actual = *_aplicado` (el próximo aumento parte del
-   aplicado, no del propuesto). No se tocan `*_base_inicial` ni fechas.
-3. `registros_mensuales`: sobreescrita `alquiler_calculado` /
-   `expensa_calculada` y `porcentaje_aumento_usado` del registro del período,
-   recalcula `total` común. **Los overrides no se tocan.**
+   aplicado, no del propuesto), **solo si el contrato todavía tiene el
+   aplicado anterior**: si el usuario lo corrigió editando el contrato, la
+   corrección no se pisa. No se tocan `*_base_inicial` ni fechas.
+3. `registros_mensuales`: `alquiler_calculado` / `expensa_calculada` y
+   `porcentaje_aumento_usado` del registro del período, con
+   `fijar_montos_calculados` (los overrides conservan su diferencia).
 4. `registros_mensuales` posteriores al período y **no pagados** (atrasados
-   intermedios y mes en curso): se generaron con el monto que tenía el
-   contrato (el propuesto original), así que heredan `alquiler_calculado` /
-   `expensa_calculada` aplicados y recalculan `total`. Como `existe_posterior()`
-   ya garantizó que no hay aumentos posteriores, todos derivan de este. Los
-   pagados quedan como histórico y los overrides se preservan.
+   intermedios y mes en curso) que todavía tienen el aplicado anterior: se
+   generaron con el monto del aumento, así que heredan el aplicado (mismo
+   helper). Como `existe_posterior()` ya garantizó que no hay aumentos
+   posteriores, derivan de este. Los pagados quedan como histórico y los que
+   tienen otro monto (corrección del usuario) no se tocan.
 
 ### Consolidación
 
@@ -331,13 +356,18 @@ Sincronización (commit único):
   - `POST /dashboard/registros/{id}/override` — ajuste individual (409 fuera
     de vigencia).
 - Servicios:
-  - `GET /servicios/pendientes` — contratos activos con agua/luz, mes actual
-    + atrasados.
+  - `GET /servicios/pendientes` — contratos con agua/luz, mes actual
+    + atrasados (incluida la deuda de contratos finalizados).
   - `POST /servicios/guardar?id_registro&agua&luz` — 400 si pagado, 409 fuera
     de vigencia.
-- Contratos: `GET/POST /contratos/`, `GET/PUT/DELETE /contratos/{id}`,
-  `GET /contratos/{id}/tiene-pagos`, `POST /contratos/{id}/cerrar`,
-  `POST/GET /contratos/{id}/archivo` (PDF/DOCX).
+- Contratos: `GET/POST /contratos/`, `GET/PUT/DELETE /contratos/{id}`
+  (DELETE también borra sus registros mensuales e historial de aumentos: SQLite
+  reutiliza ids y un contrato nuevo los heredaría),
+  `GET /contratos/{id}/tiene-pagos`, `GET /contratos/{id}/meses-sin-cobrar`
+  (`[{anio, mes, total}]`, para el aviso del modal de cierre),
+  `POST /contratos/{id}/cerrar`, `POST/GET /contratos/{id}/archivo` (PDF/DOCX).
+- Departamentos / Inquilinos: `DELETE` responde **409** si algún contrato
+  (activo o finalizado) los referencia (`crud_contratos.tiene_contratos`).
 - Aumentos: `GET /aumentos/` (próximos), `GET /aumentos/historial?estado=...`
   (fuente de verdad), `PATCH /aumentos/historial/{id}` (modificar pendiente).
 - Backup: `POST /backup/` y `GET /backup/` (carpeta `backups/`).
@@ -360,7 +390,8 @@ Sincronización (commit único):
     (la fila es un evento del historial).
 - El frontend determina "cobrable" con `estado_servicios === 'OK'` +
   `pagado == False`; la selección masiva (`visiblesCobrables`) excluye
-  atrasados por construcción.
+  atrasados por construcción (el mes en curso de un contrato finalizado sí
+  entra, porque no es atrasado).
 
 ---
 

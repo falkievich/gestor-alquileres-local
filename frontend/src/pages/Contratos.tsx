@@ -102,6 +102,8 @@ export default function Contratos() {
   const [contratoEnCurso, setContratoEnCurso] = useState(false)
   const [contratoACerrar, setContratoACerrar] = useState<Contrato | null>(null)
   const [cerrando, setCerrando] = useState(false)
+  // null mientras se consulta: el cierre se confirma recién con el aviso a la vista.
+  const [mesesSinCobrar, setMesesSinCobrar] = useState<{ anio: number; mes: number; total: number }[] | null>(null)
   const [aumentosPendientes, setAumentosPendientes] = useState<Record<number, HistorialAumentoDetalle>>({})
   // Tab activa
   type TabContratos = 'activos' | 'finalizados'
@@ -292,6 +294,17 @@ export default function Contratos() {
     }
   }
 
+  async function abrirCierre(c: Contrato) {
+    setMesesSinCobrar(null)
+    setContratoACerrar(c)
+    try {
+      const res = await api.get(`/contratos/${c.id_contratos}/meses-sin-cobrar`)
+      setMesesSinCobrar(res.data)
+    } catch {
+      setMesesSinCobrar([])
+    }
+  }
+
   async function confirmarCierre() {
     if (!contratoACerrar || cerrando) return
     setCerrando(true)
@@ -383,7 +396,7 @@ export default function Contratos() {
                 <button onClick={() => abrirDetalle(c, 'editar')} className="p-1.5 hover:bg-gray-100 rounded" title="Editar">
                   <Pencil size={14} className="text-gray-500" />
                 </button>
-                <button onClick={() => setContratoACerrar(c)} className="p-1.5 hover:bg-gray-100 rounded" title="Cerrar contrato">
+                <button onClick={() => abrirCierre(c)} className="p-1.5 hover:bg-gray-100 rounded" title="Cerrar contrato">
                   <Lock size={14} className="text-orange-500" />
                 </button>
               </>
@@ -891,12 +904,30 @@ export default function Contratos() {
                 </div>
               </div>
 
+              {mesesSinCobrar && mesesSinCobrar.length > 0 && (
+                <div className="p-3 mb-3 bg-amber-50 border border-amber-400 rounded-lg text-xs text-amber-900">
+                  <p className="font-semibold mb-1">
+                    Tiene {mesesSinCobrar.length} {mesesSinCobrar.length === 1 ? 'mes' : 'meses'} sin cobrar:
+                  </p>
+                  <ul className="space-y-0.5 mb-1">
+                    {mesesSinCobrar.map(m => (
+                      <li key={`${m.anio}-${m.mes}`} className="flex justify-between gap-4">
+                        <span>{MESES[m.mes - 1]} {m.anio}</span>
+                        <span className="font-mono">{formatMoneda(m.total)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p>Van a seguir apareciendo en el Dashboard como deuda hasta que los cobres.</p>
+                </div>
+              )}
+
               <div className="flex items-start gap-2 p-3 mb-5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
                 <span className="mt-0.5 shrink-0">⚠️</span>
                 <span>
                   El contrato pasa a <strong>Finalizado</strong>: se libera el departamento si no le queda otro
                   contrato activo, el inquilino queda como <strong>Anterior</strong> si no tiene otros contratos y
-                  no se generan más registros ni aumentos para este contrato.
+                  no se generan más registros ni aumentos para este contrato (los meses ya generados sin cobrar
+                  se siguen pudiendo cobrar).
                 </span>
               </div>
 
@@ -910,7 +941,7 @@ export default function Contratos() {
                 </button>
                 <button
                   onClick={confirmarCierre}
-                  disabled={cerrando}
+                  disabled={cerrando || mesesSinCobrar === null}
                   className="flex-1 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 active:bg-green-800 disabled:opacity-60 transition font-semibold"
                 >
                   {cerrando ? 'Cerrando...' : 'Sí, cerrar contrato'}

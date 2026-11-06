@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
+from sqlmodel import Session
 from typing import List, Optional
 from datetime import date
 from app.db import get_session
@@ -14,6 +14,8 @@ from app.service.mes_service import (
     calcular_proximo_aumento,
     total_efectivo_registro,
     contrato_vigente_para_mes,
+    contrato_operativo_hoy,
+    registros_sin_cobrar_fuera_del_ciclo,
 )
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -27,13 +29,7 @@ def get_dashboard(session: Session = Depends(get_session)):
     resultado = []
 
     for contrato in contratos:
-        # No mostrar contratos cuya fecha de inicio aún no llegó
-        if contrato.fecha_inicio > hoy:
-            continue
-
-        # No preparar/mostrar meses posteriores al vencimiento del contrato
-        # (el mes de fecha_fin sigue siendo válido).
-        if not contrato_vigente_para_mes(contrato, anio, mes):
+        if not contrato_operativo_hoy(contrato):
             continue
 
         # Aplica el aumento si corresponde y crea (o reutiliza) el registro
@@ -71,31 +67,10 @@ def get_dashboard(session: Session = Depends(get_session)):
             "atrasado": False,
         })
 
-    # Cobros atrasados: registros de meses anteriores sin cobrar. Se listan
-    # con sus montos históricos congelados (override ?? calculado), sin
-    # preparar ni crear nada. Incluye contratos finalizados mientras el
-    # registro no esté pagado y su mes esté dentro de la vigencia.
-    from sqlalchemy import or_
-    registros_atrasados = session.exec(
-        select(RegistroMensual).where(
-            RegistroMensual.pagado == False,  # noqa: E712
-            or_(
-                RegistroMensual.anio < anio,
-                (RegistroMensual.anio == anio) & (RegistroMensual.mes < mes),
-            ),
-        ).order_by(
-            RegistroMensual.anio.asc(), RegistroMensual.mes.asc()
-        )
-    ).all()
-
-    for reg_atrasado in registros_atrasados:
-        contrato = session.get(Contrato, reg_atrasado.id_contratos)
-        if not contrato:
-            continue
-        # Solo contratos activos: los pendientes de contratos cerrados
-        # permanecen en DB pero no reaparecen en las vistas operativas.
-        if contrato.estado != 'activo':
-            continue
+    # Deuda fuera del ciclo del mes (atrasados y mes en curso de contratos
+    # finalizados): se lista con sus montos históricos congelados
+    # (override ?? calculado), sin preparar ni crear nada.
+    for reg_atrasado, contrato in registros_sin_cobrar_fuera_del_ciclo(session):
         from app.model.models import Departamento, Inquilino
         dep = session.get(Departamento, contrato.id_departamentos)
         inq = session.get(Inquilino, contrato.id_inquilinos)
@@ -114,7 +89,7 @@ def get_dashboard(session: Session = Depends(get_session)):
             "anio": reg_atrasado.anio,
             "mes": reg_atrasado.mes,
             "total": total_efectivo,
-            "atrasado": True,
+            "atrasado": (reg_atrasado.anio, reg_atrasado.mes) < (anio, mes),
         })
 
     return resultado
@@ -170,12 +145,13 @@ def marcar_pagado(id_registro: int, session: Session = Depends(get_session)):
     contrato = session.get(Contrato, registro.id_contratos)
     if not contrato:
         raise HTTPException(status_code=404, detail="Contrato no encontrado")
-    # Un mes posterior al vencimiento del contrato no se puede cobrar.
+    # Un mes fuera de la vigencia del contrato no se puede cobrar.
     if not contrato_vigente_para_mes(contrato, registro.anio, registro.mes):
         raise HTTPException(
             status_code=409,
-            detail="No se puede cobrar un mes posterior a la fecha de "
-                   f"vencimiento ({contrato.fecha_fin.isoformat()}) del contrato")
+            detail="No se puede cobrar un mes fuera de la vigencia del "
+                   f"contrato ({contrato.fecha_inicio.isoformat()} a "
+                   f"{contrato.fecha_fin.isoformat()})")
     estado_servicios = calcular_estado_servicios(contrato, registro)
     if estado_servicios != "OK":
         raise HTTPException(
@@ -207,12 +183,13 @@ def override_registro(
     contrato = session.get(Contrato, registro.id_contratos)
     if not contrato:
         raise HTTPException(status_code=404, detail="Contrato no encontrado")
-    # No se permiten ajustes sobre meses posteriores al vencimiento.
+    # No se permiten ajustes sobre meses fuera de la vigencia.
     if not contrato_vigente_para_mes(contrato, registro.anio, registro.mes):
         raise HTTPException(
             status_code=409,
-            detail="No se pueden ajustar meses posteriores a la fecha de "
-                   f"vencimiento ({contrato.fecha_fin.isoformat()}) del contrato")
+            detail="No se pueden ajustar meses fuera de la vigencia del "
+                   f"contrato ({contrato.fecha_inicio.isoformat()} a "
+                   f"{contrato.fecha_fin.isoformat()})")
 
     from app.crud.registros import RegistroMensualUpdate
     update_data = RegistroMensualUpdate(

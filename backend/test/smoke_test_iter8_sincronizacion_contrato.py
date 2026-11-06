@@ -163,15 +163,17 @@ print("\n--- 5) El ajuste manual del alquiler se preserva ---")
 id_c3 = crear_contrato("T83")
 assert client.get("/dashboard/mes-actual").status_code == 200
 _, reg, _ = leer(id_c3)
+diferencia = 150000 - reg.alquiler_calculado
 client.post(f"/dashboard/registros/{reg.id_registros_mensuales}/override",
             params={"alquiler_override": 150000, "nota_override": "ajuste"})
 editar(id_c3, alquiler_base_actual=200000)
 c, reg, h = leer(id_c3)
-check("el override sobrevive a la edición del contrato",
-      reg.alquiler_override == 150000 and reg.nota_override == "ajuste",
+check("el ajuste sobrevive a la edición conservando su diferencia",
+      reg.alquiler_override == 220000 + diferencia and reg.nota_override == "ajuste",
       f"({reg.alquiler_override})")
-check("el calculado y el total respetan override + aumento re-basado",
-      (reg.alquiler_calculado, reg.total) == (220000, 150000), f"({reg.alquiler_calculado}, {reg.total})")
+check("el calculado y el total respetan ajuste + aumento re-basado",
+      (reg.alquiler_calculado, reg.total) == (220000, 220000 + diferencia),
+      f"({reg.alquiler_calculado}, {reg.total})")
 
 print("\n--- 6) Un pendiente viejo con aumento posterior no se re-calcula ---")
 id_c4 = crear_contrato("T84", periodicidad_aumento_meses=1,

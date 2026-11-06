@@ -279,7 +279,7 @@ with Session(engine) as s:
           str(reg4.porcentaje_aumento_usado))
     check("sync registro: total recalculado", reg4.total == 110000, str(reg4.total))  # 105000+5000
 
-# ── 16) Overrides permanecen intactos ───────────────────────────────
+# ── 16) Overrides conservan su diferencia con el calculado ──────────
 r = client.post(f"/dashboard/registros/{reg4.id_registros_mensuales}/override",
                 params={"alquiler_override": 100000, "nota_override": "ajuste test"})
 check("override cargado", r.status_code == 200, str(r.status_code))
@@ -290,10 +290,12 @@ r = client.patch(f"/aumentos/historial/{id_h4}", json={"alquiler_aplicado": 1070
 check("PATCH C4 con override 200", r.status_code == 200)
 with Session(engine) as s:
     reg4c = s.get(RegistroMensual, reg4.id_registros_mensuales)
-    check("override intacto", reg4c.alquiler_override == 100000, str(reg4c.alquiler_override))
+    # El ajuste era -5000 sobre 105000: sigue siendo -5000 sobre 107000.
+    check("override conserva la diferencia (107000-5000)",
+          reg4c.alquiler_override == 102000, str(reg4c.alquiler_override))
     check("nota_override intacta", reg4c.nota_override == "ajuste test")
     check("calculado actualizado a 107000", reg4c.alquiler_calculado == 107000)
-    check("total respeta override (100000+5000)", reg4c.total == 105000, str(reg4c.total))
+    check("total respeta override (102000+5000)", reg4c.total == 107000, str(reg4c.total))
     # contrato sync con el aplicado
     check("contrato sincronizado a 107000", s.get(Contrato, id_c4).alquiler_base_actual == 107000)
 

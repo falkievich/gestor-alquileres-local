@@ -112,6 +112,11 @@ function PendientesConsolidar({
                           <Clock size={11} /> Atrasado · {MESES[h.mes - 1]} {h.anio}
                         </span>
                       )}
+                      {item.contrato.estado === 'finalizado' && (
+                        <span className="inline-block text-xs bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded font-semibold">
+                          Contrato finalizado
+                        </span>
+                      )}
                     </div>
                     <div className="text-sm text-gray-500 mt-0.5">
                       {item.inquilino?.nombre_apellido}

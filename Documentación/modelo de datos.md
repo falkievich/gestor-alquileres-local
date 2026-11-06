@@ -108,8 +108,8 @@ PK: `id_registros_mensuales` (autonumérico). FK: `id_contratos` → contratos.
 | `anio` / `mes` | INTEGER | período (mes 1–12) |
 | `alquiler_calculado` | INTEGER | alquiler congelado al crear el registro (o actualizado al aplicarse/ajustarse un aumento) |
 | `expensa_calculada` | INTEGER NULL | ídem para expensa |
-| `alquiler_override` | INTEGER NULL | alquiler absoluto por ajuste manual (NULL = sin ajuste) |
-| `expensa_override` | INTEGER NULL | expensa absoluta por ajuste manual |
+| `alquiler_override` | INTEGER NULL | alquiler absoluto por ajuste manual (NULL = sin ajuste); si cambia `alquiler_calculado` se desplaza para conservar la diferencia |
+| `expensa_override` | INTEGER NULL | expensa absoluta por ajuste manual (misma regla) |
 | `nota_override` | TEXT NULL | motivo del ajuste |
 | `agua` / `luz` | INTEGER NULL | valores de servicios cargados |
 | `impuesto` | INTEGER NULL | copia del `impuesto_fijo` del contrato al crear el registro |
@@ -120,6 +120,15 @@ PK: `id_registros_mensuales` (autonumérico). FK: `id_contratos` → contratos.
 **Unicidad lógica:** un registro por `(id_contratos, anio, mes)`. La
 prevención de duplicados es check-then-create en el servicio (no hay
 constraint UNIQUE en SQLite para esta tabla).
+
+**Vigencia:** solo se generan registros de meses entre el mes de `fecha_inicio`
+y el de `fecha_fin` del contrato. Si un contrato con meses registrados queda
+sin abrirse uno o más meses, esos meses se generan después como atrasados.
+
+**Integridad referencial:** SQLite no aplica las FK y reutiliza el id más alto
+tras un borrado, así que la integridad la garantiza la app: no se puede borrar
+un departamento o inquilino con contratos, y borrar un contrato borra sus
+registros mensuales y su historial de aumentos.
 
 ---
 

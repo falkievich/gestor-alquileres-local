@@ -63,8 +63,12 @@ mensual puntual sin afectar el contrato:
 - **Restaurar:** devuelve los montos a los valores calculados originalmente
   (limpia los overrides). Puede usarse todas las veces que se quiera mientras
   el mes no esté cobrado.
-- No se permite ajustar meses posteriores a la fecha de vencimiento del
-  contrato (rechazo del backend).
+- Si después cambia el monto base del mes (se edita el contrato, se aplica o
+  se modifica un aumento), el ajuste **conserva su diferencia**: un +$5.000
+  sobre $100.000 pasa a ser +$5.000 sobre el nuevo monto. Un mes bonificado
+  (ajustado a $0) sigue en $0.
+- No se permite ajustar meses fuera de la vigencia del contrato (antes del mes
+  de inicio o después del de vencimiento; rechazo del backend).
 
 ### Ajuste masivo
 
@@ -74,6 +78,10 @@ mensual puntual sin afectar el contrato:
   excluidos.
 - Permite elegir varios registros y aplicar el mismo delta de alquiler a todos,
   con nota única; se aplican en paralelo como ajustes individuales.
+- Igual que el ajuste individual, es **acumulativo**: si un registro ya tenía
+  un ajuste de alquiler, el delta se suma a ese ajuste. El ajuste de expensa
+  existente se conserva y, si no se escribe una nota nueva, se conserva la
+  nota anterior.
 - El "seleccionar todos" también opera solo sobre los cobrables del mes.
 
 ### Pago definitivo
@@ -82,8 +90,9 @@ mensual puntual sin afectar el contrato:
   alquiler, expensa, agua, luz, impuesto y total).
 - El pago es **definitivo: no existe "desmarcar pagado"**.
 - No se puede marcar pagado si hay **servicios pendientes** de cargar.
-- No se puede cobrar un mes **posterior** a la fecha de vencimiento del
-  contrato (el mes de vencimiento sí es cobrable).
+- No se puede cobrar un mes fuera de la vigencia del contrato: anterior al mes
+  de inicio o **posterior** al mes de vencimiento (el mes de inicio y el de
+  vencimiento sí son cobrables).
 - Al cobrar un mes que tenía un aumento **PENDIENTE**, ese aumento pasa
   automáticamente a **CONSOLIDADO** y queda inmutable (ver Aumentos).
 - Un atrasado se cobra igual que cualquier mes: con sus montos históricos
@@ -109,9 +118,18 @@ mensual puntual sin afectar el contrato:
 - Se muestran **arriba** del mes en curso, ordenados del más antiguo al más
   reciente, identificados con el badge **"Atrasado · Mes Año"** (ver
   convenciones ui).
-- Solo aparecen pendientes de **contratos activos**; los pendientes de
-  contratos cerrados quedan en la base de datos pero no reaparecen en las
-  vistas operativas.
+- **Meses en los que no se abrió la app:** si un contrato ya tenía meses
+  registrados y pasaron meses sin abrir el Dashboard ni Servicios, al volver
+  a abrirlos se generan esos meses faltantes como atrasados, cada uno con el
+  aumento que le corresponda en su mes. Un contrato recién cargado (sin
+  ningún mes registrado) no genera deuda hacia atrás.
+- La deuda de un **contrato cerrado** sigue apareciendo (con el badge
+  **"Contrato finalizado"**) hasta que se cobra; el mes en curso sin cobrar de
+  un contrato cerrado también se muestra. Un contrato cerrado no genera meses
+  nuevos.
+- Los meses que quedaron fuera de la vigencia (por ejemplo, al acortar la
+  fecha de vencimiento) no se muestran porque no se pueden cobrar; si se
+  vuelve a extender la vigencia, reaparecen con sus datos.
 - Un atrasado se cobra normalmente (con las mismas guardas: servicios OK,
   vigencia); su **pago consolida el aumento PENDIENTE de su propio período**,
   no el del mes en curso.
@@ -127,7 +145,9 @@ Pantalla para cargar los valores de **agua y luz** por departamento.
 **Qué se muestra:**
 
 - Filas por contrato activo que cobra agua y/o luz (`cobra_agua` / `cobra_luz`),
-  cuyo registro del mes no esté cobrado.
+  ya iniciado (su fecha de inicio llegó), cuyo registro del mes no esté
+  cobrado. Un contrato que empieza más adelante no aparece ni genera cobros
+  hasta su fecha de inicio (igual que en el Dashboard).
 - Columnas Agua ($) y Luz ($): campos numéricos editables si el contrato cobra
   el servicio; si no, muestra **"No cobra"**.
 - **Estado** por fila: **Pendiente** o **Cargado**.
@@ -141,8 +161,8 @@ Pantalla para cargar los valores de **agua y luz** por departamento.
   hasta que el cobro del mes sea registrado como pagado; al quedar pagado el
   registro ya no aparece (y no se puede volver a editar).
 - No se puede editar el servicio de un mes ya cobrado (rechazo del backend).
-- No se pueden cargar servicios de meses posteriores al vencimiento del
-  contrato (el mes de vencimiento sí es válido).
+- No se pueden cargar servicios de meses fuera de la vigencia del contrato
+  (el mes de inicio y el de vencimiento sí son válidos).
 
 **Servicios atrasados:**
 
@@ -155,8 +175,9 @@ Pantalla para cargar los valores de **agua y luz** por departamento.
   mes**. Así se puede corregir un monto cargado por error en un mes anterior.
 - El encabezado de la pantalla siempre indica el **mes actual** (no se confunde
   con el primer atrasado del listado).
-- Los servicios atrasados son de contratos activos; el mes de vencimiento sí es
-  cargable, los posteriores no.
+- También se listan los meses sin cobrar de contratos cerrados (badge
+  **"Contrato finalizado"**); el mes de vencimiento sí es cargable, los
+  posteriores no.
 
 ---
 
@@ -167,7 +188,8 @@ estado **Ocupado / Libre** (según tenga o no contrato activo) y acciones:
 
 - **Crear / editar:** piso (Planta baja o Piso 1–3), código (ej. "1A") y
   dirección opcional.
-- **Eliminar:** rechazado si el departamento tiene contratos asociados.
+- **Eliminar:** rechazado si el departamento tiene contratos asociados
+  (activos o finalizados); se informa con un aviso de error.
 - **Historial de contratos:** modal con todos los contratos del departamento
   (inquilino, fechas, estado), ordenado de más reciente a más viejo.
 - **Ver pagos:** modal con los registros mensuales cobrados del departamento,
@@ -187,7 +209,8 @@ Listado con buscador por nombre (ignora mayósculas y acentos), estado
   estado actual/anterior.
 - **Ver contratos:** historial de contratos del inquilino, ordenado descendente.
 - **Ver pagos:** historial de cobros del inquilino con filtros por año y mes.
-- **Eliminar:** rechazado si el inquilino tiene contratos asociados.
+- **Eliminar:** rechazado si el inquilino tiene contratos asociados (activos o
+  finalizados); se informa con un aviso de error.
 
 En el alta de contratos solo pueden seleccionarse inquilinos **actuales**
 que no tengan otro contrato activo vigente.
@@ -255,9 +278,15 @@ contrato.
 - **Fecha de inicio bloqueada** cuando el contrato ya tiene meses cobrados
   (cambiarla alteraría el calendario de aumentos).
 - Al editar el alquiler/expensa actual o el impuesto fijo, los registros
-  mensuales **no pagados, sin ajuste manual y del mes en curso en adelante**
-  (hasta el mes de vencimiento) se recalculan automáticamente; los meses ya
-  cobrados no se tocan.
+  mensuales **no pagados y del mes en curso en adelante** (hasta el mes de
+  vencimiento) se recalculan automáticamente; si tenían un ajuste manual, el
+  ajuste conserva su diferencia con el nuevo monto. Los meses ya cobrados y
+  los atrasados no se tocan.
+- Si se corrige la configuración del aumento (por ejemplo la fecha del último
+  aumento) y con eso el aumento pasa a corresponder en el mes en curso, el
+  cobro del mes ya generado se actualiza al monto aumentado. Si ese mes ya se
+  había cobrado, el cobro no se modifica y el aumento rige desde el mes
+  siguiente.
 - Si se **destildan** "cobra expensa / agua / luz", esos conceptos se limpian
   de los mismos registros (incluido el ajuste manual de expensa) para que el
   total no siga sumando montos que las pantallas ya no muestran.
@@ -280,9 +309,13 @@ contrato.
   impuesto, servicios incluidos, configuración de aumento y estado) y el aviso
   de las consecuencias del cierre. Botón verde para confirmar, rojo para
   cancelar (cancelar no cierra nada).
+- Si el contrato tiene **meses sin cobrar**, el modal los lista (mes y total)
+  y avisa que van a seguir apareciendo en el Dashboard como deuda hasta
+  cobrarlos. El botón de confirmar se habilita una vez cargado ese aviso.
 - Al confirmar, el contrato queda finalizado: libera el departamento si no hay
   otros contratos activos en él, y el inquilino queda como "Anterior" si ya no
-  tiene contratos activos.
+  tiene contratos activos. No se generan meses ni aumentos nuevos, pero los
+  meses ya generados sin cobrar se siguen pudiendo cobrar.
 - El cierre manual es independiente de la fecha de vencimiento: un contrato
   puede cerrarse aunque su `fecha_fin` sea futura, y un contrato cuya
   `fecha_fin` ya pasó aparece "Vencido" mientras no se cierre.
@@ -388,7 +421,13 @@ próximos), con el botón **"Modificar aumento"**:
   en curso pasan a cobrar el monto modificado, y los meses futuros se generan
   con él. Ejemplo: en noviembre se modifica el aumento de octubre (sin cobrar)
   de $500.100 a $500.000; octubre y noviembre quedan en $500.000. Los meses ya
-  cobrados no cambian y los ajustes manuales se conservan.
+  cobrados no cambian y los ajustes manuales conservan su diferencia.
+- Si después del aumento el usuario **corrigió el monto del contrato**
+  (editándolo), esa corrección se respeta: ni el contrato ni los meses que ya
+  tienen el monto corregido vuelven al monto del aumento modificado.
+- Los aumentos pendientes de un **contrato cerrado** siguen en este bloque
+  (con el badge "Contrato finalizado") hasta que se cobra su mes; los que
+  quedaron fuera de la vigencia (se acortó el vencimiento) no se muestran.
 
 ### Pestaña Historial de aumentos
 
