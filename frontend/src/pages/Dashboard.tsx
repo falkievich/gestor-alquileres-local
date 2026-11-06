@@ -5,7 +5,7 @@ import { formatMoneda, MESES } from '../lib/types'
 import { useToast, ModalShell } from '../lib/ui'
 import {
   CheckCircle2, AlertCircle, XCircle, Eye, EyeOff,
-  RefreshCw, Printer, HardDriveDownload, SlidersHorizontal, ListChecks, Filter
+  RefreshCw, Printer, HardDriveDownload, SlidersHorizontal, ListChecks, Filter, Clock
 } from 'lucide-react'
 
 function formatDepto(piso: string | undefined, codigo: string | undefined) {
@@ -21,6 +21,25 @@ interface HistorialPagoItem {
   anio: number
   mes: number
   total: number
+}
+
+type FilaCobro = Pick<DashboardItem, 'contrato' | 'registro'>
+
+/**
+ * Columnas monetarias opcionales que tienen al menos un valor cargado en el
+ * listado. Las que quedan en false se saltean al imprimir (`colPrint`).
+ */
+function columnasConDatos(filas: FilaCobro[]) {
+  return {
+    expensa: filas.some(f => f.contrato.cobra_expensa && (f.registro.expensa_override ?? f.registro.expensa_calculada) != null),
+    agua: filas.some(f => f.contrato.cobra_agua && f.registro.agua != null),
+    luz: filas.some(f => f.contrato.cobra_luz && f.registro.luz != null),
+    impuesto: filas.some(f => f.registro.impuesto != null),
+  }
+}
+
+function colPrint(conDatos: boolean) {
+  return conDatos ? '' : 'col-vacia-impresion'
 }
 
 export default function Dashboard() {
@@ -96,12 +115,6 @@ export default function Dashboard() {
     }
   }
 
-  async function desmarcarPagado(id: number) {
-    await api.post(`/dashboard/registros/${id}/desmarcar-pagado`)
-    toast('Se desmarcó el cobro correctamente')
-    cargar()
-  }
-
   async function crearBackup() {
     try {
       const res = await api.post('/backup/')
@@ -143,7 +156,7 @@ export default function Dashboard() {
     if (seleccionados.size === 0) return
     const delta = Number(ajusteMasivoData.alquiler_delta)
     const promises = Array.from(seleccionados).map(idReg => {
-      const item = visibles.find(i => i.registro.id_registros_mensuales === idReg)
+      const item = visiblesCobrables.find(i => i.registro.id_registros_mensuales === idReg)
       if (!item) return Promise.resolve()
       const params: Record<string, string | number> = {
         alquiler_override: item.registro.alquiler_calculado + delta,
@@ -170,10 +183,10 @@ export default function Dashboard() {
   }
 
   function toggleTodos() {
-    if (seleccionados.size === visibles.length) {
+    if (seleccionados.size === visiblesCobrables.length) {
       setSeleccionados(new Set())
     } else {
-      setSeleccionados(new Set(visibles.map(i => i.registro.id_registros_mensuales)))
+      setSeleccionados(new Set(visiblesCobrables.map(i => i.registro.id_registros_mensuales)))
     }
   }
 
@@ -184,8 +197,19 @@ export default function Dashboard() {
 
   function handleImprimir() { window.print() }
 
-  const visibles = items.filter(i => !i.registro.pagado)
-  const mesActual = items.length > 0 ? `${MESES[items[0].mes - 1]} ${items[0].anio}` : ''
+  // Atrasados (meses anteriores sin cobrar) arriba, más antiguo → más reciente;
+  // luego los registros del mes actual con su comportamiento normal.
+  const atrasados = items.filter(i => i.atrasado)
+  const actuales = items.filter(i => !i.atrasado && !i.registro.pagado)
+  const filas = [...atrasados, ...actuales]
+  // La selección masiva solo opera sobre registros del mes actual.
+  const visiblesCobrables = actuales
+  const visibles = filas
+  const colsCobros = columnasConDatos(visibles)
+  const colsHistorial = columnasConDatos(historial)
+  const mesActual = actuales.length > 0
+    ? `${MESES[actuales[0].mes - 1]} ${actuales[0].anio}`
+    : ''
 
   return (
     <div className="p-6">
@@ -333,10 +357,10 @@ export default function Dashboard() {
                       <th className="text-left px-4 py-3 font-semibold text-gray-600">Depto</th>
                       <th className="text-left px-4 py-3 font-semibold text-gray-600">Inquilino</th>
                       <th className="text-left px-4 py-3 font-semibold text-gray-600">Alquiler</th>
-                      <th className="text-left px-4 py-3 font-semibold text-gray-600">Expensa</th>
-                      <th className="text-left px-4 py-3 font-semibold text-gray-600">Agua</th>
-                      <th className="text-left px-4 py-3 font-semibold text-gray-600">Luz</th>
-                      <th className="text-left px-4 py-3 font-semibold text-gray-600">Impuesto</th>
+                      <th className={`text-left px-4 py-3 font-semibold text-gray-600 ${colPrint(colsHistorial.expensa)}`}>Expensa</th>
+                      <th className={`text-left px-4 py-3 font-semibold text-gray-600 ${colPrint(colsHistorial.agua)}`}>Agua</th>
+                      <th className={`text-left px-4 py-3 font-semibold text-gray-600 ${colPrint(colsHistorial.luz)}`}>Luz</th>
+                      <th className={`text-left px-4 py-3 font-semibold text-gray-600 ${colPrint(colsHistorial.impuesto)}`}>Impuesto</th>
                       <th className="text-center px-4 py-3 font-semibold text-gray-600">Total</th>
                       <th className="text-center px-4 py-3 font-semibold text-gray-600 print:hidden">Acción</th>
                     </tr>
@@ -362,16 +386,16 @@ export default function Dashboard() {
                           </td>
                           <td className="px-4 py-3 text-gray-700">{h.inquilino?.nombre_apellido}</td>
                     <td className="px-4 py-3 text-left font-mono whitespace-nowrap">{formatMoneda(alq)}</td>
-                          <td className="px-4 py-3 text-left font-mono whitespace-nowrap">
+                          <td className={`px-4 py-3 text-left font-mono whitespace-nowrap ${colPrint(colsHistorial.expensa)}`}>
                             {h.contrato.cobra_expensa ? formatMoneda(exp) : <span className="text-gray-400">-</span>}
                           </td>
-                          <td className="px-4 py-3 text-left font-mono whitespace-nowrap">
+                          <td className={`px-4 py-3 text-left font-mono whitespace-nowrap ${colPrint(colsHistorial.agua)}`}>
                             {h.contrato.cobra_agua ? (reg.agua != null ? formatMoneda(reg.agua) : <span className="text-gray-400">-</span>) : <span className="text-gray-400">-</span>}
                           </td>
-                          <td className="px-4 py-3 text-left font-mono whitespace-nowrap">
+                          <td className={`px-4 py-3 text-left font-mono whitespace-nowrap ${colPrint(colsHistorial.luz)}`}>
                             {h.contrato.cobra_luz ? (reg.luz != null ? formatMoneda(reg.luz) : <span className="text-gray-400">-</span>) : <span className="text-gray-400">-</span>}
                           </td>
-                          <td className="px-4 py-3 text-left font-mono whitespace-nowrap">
+                          <td className={`px-4 py-3 text-left font-mono whitespace-nowrap ${colPrint(colsHistorial.impuesto)}`}>
                             {reg.impuesto != null ? formatMoneda(reg.impuesto) : <span className="text-gray-400">-</span>}
                           </td>
                           <td className="px-4 py-3 text-center font-bold font-mono text-green-700">{formatMoneda(h.total)}</td>
@@ -394,9 +418,9 @@ export default function Dashboard() {
             )}
           </div>
         </div>
-      ) : items.length === 0 ? (
+      ) : filas.length === 0 ? (
         <div className="text-center py-12 text-gray-400">
-          No hay contratos activos para el mes actual.
+          No hay cobros para mostrar.
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
@@ -413,7 +437,7 @@ export default function Dashboard() {
                     <input
                       type="checkbox"
                       className="w-4 h-4 rounded accent-yellow-500 cursor-pointer"
-                      checked={seleccionados.size === visibles.length && visibles.length > 0}
+                      checked={seleccionados.size === visiblesCobrables.length && visiblesCobrables.length > 0}
                       onChange={toggleTodos}
                       title="Seleccionar todos"
                     />
@@ -422,10 +446,10 @@ export default function Dashboard() {
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Depto</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Inquilino</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Alquiler</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Expensa</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Agua</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Luz</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Impuesto</th>
+                <th className={`text-left px-4 py-3 font-semibold text-gray-600 ${colPrint(colsCobros.expensa)}`}>Expensa</th>
+                <th className={`text-left px-4 py-3 font-semibold text-gray-600 ${colPrint(colsCobros.agua)}`}>Agua</th>
+                <th className={`text-left px-4 py-3 font-semibold text-gray-600 ${colPrint(colsCobros.luz)}`}>Luz</th>
+                <th className={`text-left px-4 py-3 font-semibold text-gray-600 ${colPrint(colsCobros.impuesto)}`}>Impuesto</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Total</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600 col-servicios-impresion">Servicios</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Pago</th>
@@ -440,21 +464,23 @@ export default function Dashboard() {
                 return (
                   <tr
                     key={reg.id_registros_mensuales}
-                    className={`hover:bg-gray-50 ${modoSeleccion && seleccionados.has(reg.id_registros_mensuales) ? 'bg-yellow-50' : ''}`}
-                    onClick={modoSeleccion ? () => toggleSeleccion(reg.id_registros_mensuales) : undefined}
-                    style={modoSeleccion ? { cursor: 'pointer' } : undefined}
+                    className={`hover:bg-gray-50 ${item.atrasado ? 'bg-amber-50/50' : ''} ${modoSeleccion && !item.atrasado && seleccionados.has(reg.id_registros_mensuales) ? 'bg-yellow-50' : ''}`}
+                    onClick={modoSeleccion && !item.atrasado ? () => toggleSeleccion(reg.id_registros_mensuales) : undefined}
+                    style={modoSeleccion && !item.atrasado ? { cursor: 'pointer' } : undefined}
                   >
                     {modoSeleccion && (
                       <td className="px-4 py-3 print:hidden" onClick={e => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          className="w-4 h-4 rounded accent-yellow-500 cursor-pointer"
-                          checked={seleccionados.has(reg.id_registros_mensuales)}
-                          onChange={() => toggleSeleccion(reg.id_registros_mensuales)}
-                        />
+                        {!item.atrasado && (
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 rounded accent-yellow-500 cursor-pointer"
+                            checked={seleccionados.has(reg.id_registros_mensuales)}
+                            onChange={() => toggleSeleccion(reg.id_registros_mensuales)}
+                          />
+                        )}
                       </td>
                     )}
-                    <td className="px-4 py-3">
+                    <td className={`px-4 py-3 ${item.atrasado ? 'border-l-4 border-amber-400' : ''}`}>
                       <div className="font-medium text-gray-800">
                         {formatDepto(item.departamento?.piso, item.departamento?.codigo)}
                       </div>
@@ -464,6 +490,11 @@ export default function Dashboard() {
                         </div>
                       )}
                       <div className="flex gap-1 mt-1 flex-wrap">
+                        {item.atrasado && (
+                          <span className="inline-flex items-center gap-1 text-xs bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-semibold">
+                            <Clock size={11} /> Atrasado · {MESES[item.mes - 1]} {item.anio}
+                          </span>
+                        )}
                         {item.vencido && (
                           <span className="inline-block text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-semibold">
                             Vencido
@@ -478,14 +509,14 @@ export default function Dashboard() {
                     </td>
                     <td className="px-4 py-3 text-gray-700">{item.inquilino?.nombre_apellido}</td>
                     <td className="px-4 py-3 text-left font-mono whitespace-nowrap">{formatMoneda(alq)}</td>
-                    <td className="px-4 py-3 text-left font-mono whitespace-nowrap">{item.contrato.cobra_expensa ? formatMoneda(exp) : <span className="text-gray-400">-</span>}</td>
-                    <td className="px-4 py-3 text-left font-mono whitespace-nowrap">
+                    <td className={`px-4 py-3 text-left font-mono whitespace-nowrap ${colPrint(colsCobros.expensa)}`}>{item.contrato.cobra_expensa ? formatMoneda(exp) : <span className="text-gray-400">-</span>}</td>
+                    <td className={`px-4 py-3 text-left font-mono whitespace-nowrap ${colPrint(colsCobros.agua)}`}>
                       {item.contrato.cobra_agua ? (reg.agua != null ? formatMoneda(reg.agua) : <span className="text-orange-500">Pend.</span>) : <span className="text-gray-400">-</span>}
                     </td>
-                    <td className="px-4 py-3 text-left font-mono whitespace-nowrap">
+                    <td className={`px-4 py-3 text-left font-mono whitespace-nowrap ${colPrint(colsCobros.luz)}`}>
                       {item.contrato.cobra_luz ? (reg.luz != null ? formatMoneda(reg.luz) : <span className="text-orange-500">Pend.</span>) : <span className="text-gray-400">-</span>}
                     </td>
-                    <td className="px-4 py-3 text-left font-mono whitespace-nowrap">
+                    <td className={`px-4 py-3 text-left font-mono whitespace-nowrap ${colPrint(colsCobros.impuesto)}`}>
                       {reg.impuesto != null ? formatMoneda(reg.impuesto) : <span className="text-gray-400">-</span>}
                     </td>
                     <td className="px-4 py-3 text-center font-bold font-mono">{formatMoneda(item.total)}</td>
@@ -524,14 +555,6 @@ export default function Dashboard() {
                             className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition"
                           >
                             Cobrado
-                          </button>
-                        )}
-                        {reg.pagado && (
-                          <button
-                            onClick={() => desmarcarPagado(reg.id_registros_mensuales)}
-                            className="text-xs px-2 py-1 bg-gray-400 text-white rounded hover:bg-gray-500 transition"
-                          >
-                            Desmarcar
                           </button>
                         )}
                         <button

@@ -29,8 +29,10 @@
   }
 
   /* ── Vista de impresión de la tabla de cobros del Dashboard ── */
-  /* Ocultar la columna "Servicios" al imprimir */
-  .col-servicios-impresion {
+  /* Ocultar la columna "Servicios" y las columnas monetarias que ningún
+     inquilino tiene cargadas (ver Dashboard: columnasConDatos) */
+  .col-servicios-impresion,
+  .col-vacia-impresion {
     display: none !important;
   }
 
